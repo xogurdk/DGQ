@@ -1,7 +1,7 @@
 // =============================================
 // GAS 백엔드 웹앱 URL을 여기에 입력하세요.
 // =============================================
-const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzgdGCvl7kDeG4o58WS7x7zCVP9M0MAvqUUJvLjEc2lRvxnRaeH63c4Em83uS1vHc3ZWA/exec";
+const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxrvXlJ_QsTRfjEJph19xzd0S0Ymu52JYnceJxOgLoN6yD9fWHVkCb-t8PciP4Neu7Raw/exec";
 
 // =============================================
 // DOM 참조
