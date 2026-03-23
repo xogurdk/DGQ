@@ -19,7 +19,7 @@
                 <i class="fas fa-shapes mr-2"></i>각기둥과 각뿔 마스터
             </h1>
             <p class="text-indigo-200 text-sm mt-1">
-                <span id="date-display"></span> |
+                <span id="date-display"></span> | 
                 <span id="header-name" class="font-bold text-yellow-300">학생용</span>
             </p>
         </div>
@@ -37,8 +37,6 @@
         </div>
 
         <div class="flex-1 relative overflow-y-auto bg-gray-50">
-
-            <!-- 시작 화면 -->
             <div id="start-section" class="p-8 text-center h-full flex flex-col justify-center">
                 <div class="mb-8">
                     <div class="inline-block p-6 rounded-full bg-white shadow-md mb-4 animate-bounce">
@@ -47,6 +45,7 @@
                     <h2 class="text-2xl font-bold text-gray-800 mb-2 title-font">입체도형 탐험대!</h2>
                     <p class="text-gray-600 text-sm">도형을 요리조리 관찰하며<br>차근차근 도전해봐요.</p>
                 </div>
+                
                 <div class="space-y-4">
                     <input type="text" id="username-input" class="w-full border-2 border-indigo-200 rounded-lg px-4 py-3 text-center text-lg focus:border-indigo-500 focus:outline-none transition shadow-sm" placeholder="예: 6-1 홍길동" onkeypress="handleStartEnter(event)">
                     <button type="button" onclick="startGame()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-lg transition transform active:scale-95 shadow-md text-lg">
@@ -55,13 +54,12 @@
                 </div>
             </div>
 
-            <!-- 랭킹 화면 -->
             <div id="ranking-section" class="hidden p-6 bg-white h-full">
                 <h2 class="text-center text-xl font-bold text-indigo-800 mb-6 title-font">🏆 누적 명예의 전당 (Top 10)</h2>
-
+                
                 <div id="loading-spinner" class="text-center py-10 hidden">
-                    <i class="fas fa-spinner fa-spin text-4xl text-indigo-500"></i>
-                    <p class="mt-2 text-gray-500">랭킹 불러오는 중...</p>
+                   <i class="fas fa-spinner fa-spin text-4xl text-indigo-500"></i>
+                   <p class="mt-2 text-gray-500">랭킹 불러오는 중...</p>
                 </div>
 
                 <div id="podium-area" class="flex justify-center items-end h-48 mb-8 gap-2 border-b border-gray-100 pb-4">
@@ -109,14 +107,13 @@
                 </div>
             </div>
 
-            <!-- 현황 화면 -->
             <div id="manager-section" class="hidden p-6 bg-white h-full">
                 <h2 class="text-center text-xl font-bold text-indigo-800 mb-2 title-font">📊 우리 반 활동 현황</h2>
                 <p class="text-center text-xs text-gray-500 mb-6">담당 선생님/학생 확인용</p>
-
+                
                 <div id="manager-loading" class="text-center py-10 hidden">
-                    <i class="fas fa-spinner fa-spin text-4xl text-indigo-500"></i>
-                    <p class="mt-2 text-gray-500">데이터 불러오는 중...</p>
+                   <i class="fas fa-spinner fa-spin text-4xl text-indigo-500"></i>
+                   <p class="mt-2 text-gray-500">데이터 불러오는 중...</p>
                 </div>
 
                 <div class="bg-white rounded-xl shadow-inner border border-gray-100 overflow-hidden">
@@ -131,12 +128,12 @@
                                 <th class="px-4 py-3 text-right">마지막 시간</th>
                             </tr>
                         </thead>
-                        <tbody id="manager-list-body"></tbody>
+                        <tbody id="manager-list-body">
+                            </tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- 게임 화면 -->
             <div id="game-section" class="hidden h-full flex flex-col bg-white">
                 <div class="p-4 bg-indigo-50 border-b border-indigo-100 shrink-0 flex flex-col gap-2">
                     <div class="flex gap-2">
@@ -150,7 +147,7 @@
                             <option value="elements">🔢 구성 요소 (모서리/면)</option>
                             <option value="concept">✅ 개념 (O/X)</option>
                             <option value="reverse">🕵️ 도형 역추리</option>
-                        </select>
+                            <option value="net">✂️ 전개도 탐구</option> </select>
                     </div>
                 </div>
                 <div class="w-full bg-gray-200 h-2.5 shrink-0">
@@ -192,7 +189,6 @@
                 </div>
             </div>
 
-            <!-- 결과 화면 -->
             <div id="result-section" class="hidden p-8 text-center h-full flex flex-col justify-center items-center bg-white">
                 <div class="mb-6">
                     <i class="fas fa-medal text-6xl text-yellow-500 mb-4 animate-bounce"></i>
@@ -202,13 +198,13 @@
                         <i class="fas fa-user mr-1"></i> <span id="result-name">학생 이름</span>
                     </div>
                 </div>
-
+                
                 <div class="bg-gray-50 rounded-xl p-6 mb-6 w-full border border-gray-200">
                     <div class="text-center">
-                        <p class="text-xs text-gray-500 mb-1">이번 획득 점수</p>
-                        <p class="text-2xl font-bold text-indigo-600 mb-3"><span id="final-score">0</span>점</p>
-                        <p class="text-3xl font-bold text-green-600">누적: <span id="total-score-display">...</span>점</p>
-                        <p id="save-status" class="text-xs text-orange-500 mt-2">서버에 저장 중...</p>
+                         <p class="text-xs text-gray-500 mb-1">이번 획득 점수</p>
+                         <p class="text-2xl font-bold text-indigo-600 mb-3"><span id="final-score">0</span>점</p>
+                         <p class="text-3xl font-bold text-green-600">누적: <span id="total-score-display">...</span>점</p>
+                         <p id="save-status" class="text-xs text-orange-500 mt-2">서버에 저장 중...</p>
                     </div>
                 </div>
 
@@ -221,10 +217,9 @@
                     </button>
                 </div>
             </div>
-
         </div>
     </div>
-
+    
     <script src="app.js"></script>
 </body>
 </html>
