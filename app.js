@@ -1,4 +1,4 @@
-// ⭐ [중요] 구글 스크립트 '웹 앱 URL'을 반드시 넣어주세요!
+// 선생님의 구글 스크립트 웹 앱 URL
 const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxrvXlJ_QsTRfjEJph19xzd0S0Ymu52JYnceJxOgLoN6yD9fWHVkCb-t8PciP4Neu7Raw/exec";
 
 const canvas = document.getElementById('geometryCanvas');
@@ -85,7 +85,7 @@ function goToRanking() { screens.result.classList.add('hidden'); tabs.nav.classL
 // 각뿔 모드일 때 전개도 선택 시 방어 로직
 function resetAndGenerate() { 
     if (els.shapeMode.value === 'pyramid' && els.gameMode.value === 'net') {
-        alert("각뿔의 전개도는 현재 버전에서 지원하지 않습니다. 각기둥 모드로 전환됩니다.");
+        alert("각뿔의 전개도는 현재 출제되지 않습니다. 자동으로 각기둥 모드로 전환됩니다.");
         els.shapeMode.value = 'prism';
     }
     generateProblem(); 
@@ -93,104 +93,136 @@ function resetAndGenerate() {
 
 function getRandomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
-// --- 1. 3D 입체도형(겨냥도) 그리기 ---
+// --- 1. 3D 입체도형(겨냥도) 은선 처리 ---
 function draw3DShape(n, isPrism) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const cx = canvas.width / 2, cy = canvas.height / 2 + (isPrism ? 0 : 20), r = 40 + (n * 2.5), h = 100;
-    const hue = Math.floor(Math.random() * 360), colorSolid = `hsl(${hue}, 70%, 40%)`, colorFill = `hsla(${hue}, 70%, 60%, 0.15)`, colorDash = `hsla(${hue}, 70%, 40%, 0.6)`;
-    const bottomPts = [], topPts = [], angles = []; let minX = Infinity, maxX = -Infinity, L = 0, R = 0; const offset = Math.PI / 2 + 0.3; 
+    ctx.clearRect(0, 0, canvas.width, canvas.height); 
+    ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    const cx = canvas.width / 2, cy = canvas.height / 2 + (isPrism ? 0 : 20);
+    const r = 40 + (n * 2.5), h = 100;
+    const hue = Math.floor(Math.random() * 360);
+    const colorSolid = `hsl(${hue}, 70%, 40%)`, colorFill = `hsla(${hue}, 70%, 60%, 0.15)`, colorDash = `hsla(${hue}, 70%, 40%, 0.6)`;
+
+    const bottomPts = [], topPts = [], angles = []; 
+    const offset = Math.PI / 2 + 0.3; 
 
     for(let i=0; i<n; i++) {
         let angle = offset + (i * 2 * Math.PI / n); angles.push(angle);
-        let x = cx + r * Math.cos(angle), yBottom = cy + r * 0.3 * Math.sin(angle) + h/2, yTop = cy + r * 0.3 * Math.sin(angle) - h/2;
+        let x = cx + r * Math.cos(angle);
+        let yBottom = cy + r * 0.3 * Math.sin(angle) + h/2;
+        let yTop = cy + r * 0.3 * Math.sin(angle) - h/2;
         bottomPts.push({x, y: yBottom}); topPts.push({x, y: yTop});
-        if (x < minX) { minX = x; L = i; } if (x > maxX) { maxX = x; R = i; }
     }
-    const apex = {x: cx, y: cy - h/2 - 20}; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.setLineDash([5, 5]); ctx.strokeStyle = colorDash; ctx.beginPath();
+    const apex = {x: cx, y: cy - h/2 - 20}; 
+
+    // 앞면/뒷면 판별 (수학적 컬링)
+    const isFrontFace = [];
+    for (let i = 0; i < n; i++) {
+        let nxt = (i + 1) % n;
+        let midY = Math.sin(angles[i]) + Math.sin(angles[nxt]);
+        isFrontFace.push(midY >= -0.001); 
+    }
+    const isFrontEdge = [];
+    for (let i = 0; i < n; i++) {
+        let prev = (i - 1 + n) % n;
+        isFrontEdge.push(isFrontFace[prev] || isFrontFace[i]); 
+    }
+
+    ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; 
     
+    // 점선 그리기
+    ctx.setLineDash([5, 5]); ctx.strokeStyle = colorDash; ctx.beginPath();
     for(let i=0; i<n; i++) {
-        let nxt = (i+1)%n; if (Math.sin(angles[i]) + Math.sin(angles[nxt]) < -0.001) { ctx.moveTo(bottomPts[i].x, bottomPts[i].y); ctx.lineTo(bottomPts[nxt].x, bottomPts[nxt].y); }
+        if (!isFrontFace[i]) { ctx.moveTo(bottomPts[i].x, bottomPts[i].y); ctx.lineTo(bottomPts[(i+1)%n].x, bottomPts[(i+1)%n].y); }
     }
     for(let i=0; i<n; i++) {
-        if (Math.sin(angles[i]) < -0.001 && i !== L && i !== R) { ctx.moveTo(bottomPts[i].x, bottomPts[i].y); if (isPrism) ctx.lineTo(topPts[i].x, topPts[i].y); else ctx.lineTo(apex.x, apex.y); }
+        if (!isFrontEdge[i]) { ctx.moveTo(bottomPts[i].x, bottomPts[i].y); if (isPrism) ctx.lineTo(topPts[i].x, topPts[i].y); else ctx.lineTo(apex.x, apex.y); }
     } ctx.stroke();
     
-    if (isPrism) { ctx.setLineDash([]); ctx.fillStyle = colorFill; ctx.beginPath(); ctx.moveTo(topPts[0].x, topPts[0].y); for(let i=1; i<n; i++) ctx.lineTo(topPts[i].x, topPts[i].y); ctx.closePath(); ctx.fill(); }
+    // 윗면 칠하기 (기둥만)
+    if (isPrism) { 
+        ctx.setLineDash([]); ctx.fillStyle = colorFill; ctx.beginPath(); 
+        ctx.moveTo(topPts[0].x, topPts[0].y); for(let i=1; i<n; i++) ctx.lineTo(topPts[i].x, topPts[i].y); 
+        ctx.closePath(); ctx.fill(); 
+    }
+    
+    // 실선 그리기
     ctx.setLineDash([]); ctx.strokeStyle = colorSolid; ctx.beginPath();
     for(let i=0; i<n; i++) {
-        let nxt = (i+1)%n; if (Math.sin(angles[i]) + Math.sin(angles[nxt]) >= -0.001) { ctx.moveTo(bottomPts[i].x, bottomPts[i].y); ctx.lineTo(bottomPts[nxt].x, bottomPts[nxt].y); }
+        if (isFrontFace[i]) { ctx.moveTo(bottomPts[i].x, bottomPts[i].y); ctx.lineTo(bottomPts[(i+1)%n].x, bottomPts[(i+1)%n].y); }
     }
     for(let i=0; i<n; i++) {
-        if (Math.sin(angles[i]) >= -0.001 || i === L || i === R) { ctx.moveTo(bottomPts[i].x, bottomPts[i].y); if (isPrism) ctx.lineTo(topPts[i].x, topPts[i].y); else ctx.lineTo(apex.x, apex.y); }
+        if (isFrontEdge[i]) { ctx.moveTo(bottomPts[i].x, bottomPts[i].y); if (isPrism) ctx.lineTo(topPts[i].x, topPts[i].y); else ctx.lineTo(apex.x, apex.y); }
     }
-    if (isPrism) { ctx.moveTo(topPts[0].x, topPts[0].y); for(let i=1; i<n; i++) { ctx.lineTo(topPts[i].x, topPts[i].y); } ctx.lineTo(topPts[0].x, topPts[0].y); } ctx.stroke();
+    if (isPrism) { 
+        ctx.moveTo(topPts[0].x, topPts[0].y); for(let i=1; i<n; i++) ctx.lineTo(topPts[i].x, topPts[i].y); 
+        ctx.closePath();
+    } ctx.stroke();
 }
 
-// --- 2. 실제 전개도(Net) 그리기 (오류 수정 및 랜덤화 적용) ---
+// --- 2. 실제 전개도(Net) 랜덤 생성 ---
 function drawPrismNet(n) {
     ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,canvas.width,canvas.height);
-    let s = Math.min(30, 240 / n); // 캔버스 크기에 맞게 조절
+    
+    // 다각형 크기에 맞게 캔버스에 꽉 차도록 비율 자동 조절
+    let factor = 0.5 / Math.tan(Math.PI/n) + 0.5 / Math.sin(Math.PI/n);
+    let s = Math.min(35, 260 / n, 85 / factor);
     let h = 80;
-    let startX = canvas.width/2 - (n*s)/2; 
+    let startX = canvas.width/2 - (n*s)/2;
     let startY = canvas.height/2 - h/2;
 
-    // 랜덤하게 밑면이 붙을 옆면 위치 지정 (다양한 전개도 패턴 생성)
+    // 랜덤하게 밑면이 붙을 위치 결정
     let topIdx = getRandomInt(0, n-1);
     let bottomIdx = getRandomInt(0, n-1);
 
-    // 1. 옆면 (직사각형 n개) 그리기
+    // 1. 옆면 (직사각형 무리)
     ctx.beginPath(); ctx.setLineDash([]); ctx.strokeStyle = '#333'; ctx.lineWidth = 2; ctx.fillStyle = '#e0e7ff';
-    ctx.rect(startX, startY, n*s, h); ctx.fill(); ctx.stroke(); // 외곽선
-    
-    // 안쪽 접는 선 (점선)
-    ctx.beginPath(); ctx.setLineDash([5,5]); 
+    ctx.rect(startX, startY, n*s, h); ctx.fill(); ctx.stroke();
+
+    // 2. 접는 선 (점선)
+    ctx.beginPath(); ctx.setLineDash([5,5]);
     for(let i=1; i<n; i++) { ctx.moveTo(startX + i*s, startY); ctx.lineTo(startX + i*s, startY + h); }
     ctx.stroke(); ctx.setLineDash([]);
 
-    // 2. 정확한 수학 계산으로 밑면 다각형 그리기 (벌어짐 현상 해결)
+    // 3. 삼각함수로 완벽하게 결합되는 밑면 그리기
     function drawAttachedPolygon(faceIndex, yEdge, isTop) {
         let x = startX + faceIndex * s;
         let y = yEdge;
 
-        // 정다각형의 중심점 계산
-        let rApothem = (s / 2) / Math.tan(Math.PI / n);
         let R = (s / 2) / Math.sin(Math.PI / n);
+        let r = (s / 2) / Math.tan(Math.PI / n);
         let cx = x + s / 2;
-        let cy = isTop ? y - rApothem : y + rApothem;
+        let cy = isTop ? y - r : y + r;
 
-        // 다각형 그리기
         ctx.beginPath();
         for(let i=0; i<n; i++) {
-            let theta = isTop ? 
-                (Math.PI / 2 - Math.PI / n + i * 2 * Math.PI / n) : 
-                (-Math.PI / 2 + Math.PI / n + i * 2 * Math.PI / n);
+            let startAngle = isTop ? Math.atan2(r, s/2) : Math.atan2(-r, s/2);
+            let theta = startAngle + i * (2 * Math.PI / n);
             let px = cx + R * Math.cos(theta);
             let py = cy + R * Math.sin(theta);
-            if (i === 0) ctx.moveTo(px, py);
+            if(i===0) ctx.moveTo(px, py);
             else ctx.lineTo(px, py);
         }
         ctx.closePath();
         ctx.fillStyle = '#bfdbfe'; ctx.fill();
-        
-        // 다각형 외곽 실선
         ctx.setLineDash([]); ctx.strokeStyle = '#333'; ctx.lineWidth = 2; ctx.stroke();
 
-        // 덮어쓰기: 옆면과 맞닿는 부분은 잘리는 선이 아니므로 점선으로 복구
-        ctx.beginPath(); ctx.setLineDash([5,5]); 
-        ctx.strokeStyle = '#f8fafc'; ctx.lineWidth = 4; // 실선 지우기
+        // 맞붙은 모서리는 다시 점선으로 덮어쓰기
+        ctx.beginPath(); ctx.setLineDash([]);
+        ctx.strokeStyle = '#bfdbfe'; ctx.lineWidth = 4; // 바탕색으로 실선 지우기
         ctx.moveTo(x, y); ctx.lineTo(x+s, y); ctx.stroke();
-        
-        ctx.beginPath(); ctx.setLineDash([5,5]); 
-        ctx.strokeStyle = '#333'; ctx.lineWidth = 2; // 점선 다시 긋기
+
+        ctx.beginPath(); ctx.setLineDash([5,5]);
+        ctx.strokeStyle = '#333'; ctx.lineWidth = 2; // 점선으로 복구
         ctx.moveTo(x, y); ctx.lineTo(x+s, y); ctx.stroke();
         ctx.setLineDash([]);
     }
 
-    drawAttachedPolygon(topIdx, startY, true);       // 윗면
-    drawAttachedPolygon(bottomIdx, startY + h, false); // 아랫면
+    drawAttachedPolygon(topIdx, startY, true);
+    drawAttachedPolygon(bottomIdx, startY + h, false);
 }
 
-// --- 3. 다각형 넓이 복습용 도형 그리기 (가독성 극대화) ---
+// --- 3. 다각형 넓이 큼직한 폰트 적용 ---
 function drawAreaShape(type, p1, p2, p3) {
     ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.lineWidth = 3; ctx.strokeStyle = '#1e3a8a'; ctx.fillStyle = '#dbeafe';
@@ -198,7 +230,6 @@ function drawAreaShape(type, p1, p2, p3) {
     const cx = canvas.width / 2, cy = canvas.height / 2;
     let scale, bw, hh, tw, offset, w, h;
 
-    // 도형 경로 그리기
     if (type === 'triangle') {
         scale = 100 / Math.max(p1, p2); bw = p1 * scale; hh = p2 * scale;
         ctx.beginPath(); ctx.moveTo(cx - bw/2, cy + hh/2); ctx.lineTo(cx + bw/2, cy + hh/2); ctx.lineTo(cx - bw/4, cy - hh/2); ctx.closePath(); ctx.fill(); ctx.stroke();
@@ -225,14 +256,22 @@ function drawAreaShape(type, p1, p2, p3) {
         drawText(`${p1}cm`, cx + w/4 + 35, cy - 25, '#ef4444'); drawText(`${p2}cm`, cx - 25, cy + h/4 + 35, '#ef4444');
     }
 
-    // [핵심] 가독성을 위해 흰색 아웃라인이 들어간 큰 폰트 적용
     function drawText(text, x, y, color) {
         ctx.font = 'bold 28px "Noto Sans KR"'; 
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.lineWidth = 4; ctx.strokeStyle = '#ffffff'; // 흰색 테두리
+        ctx.lineWidth = 5; ctx.strokeStyle = '#ffffff'; 
         ctx.strokeText(text, x, y); 
         ctx.fillStyle = color; ctx.fillText(text, x, y);
     }
+}
+
+function drawCanvasIcon(icon, title) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0, canvas.width, canvas.height);
+    ctx.font = '60px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(icon, canvas.width/2, canvas.height/2 - 10);
+    ctx.fillStyle = '#4f46e5'; ctx.font = 'bold 20px "Noto Sans KR"';
+    ctx.fillText(title, canvas.width/2, canvas.height/2 + 50);
 }
 
 // 메인 문제 출제 제어
@@ -265,11 +304,11 @@ function generateElements() {
     draw3DShape(n, isPrism);
     let ans = 0, hint = "";
     if (isPrism) {
-        if(qType===0){ans=n+2; hint=`위아래 밑면 2개 + 옆면 ${n}개`;}else if(qType===1){ans=n*3; hint=`밑면의 변의 수 × 3`;}else{ans=n*2; hint=`위 ${n}개, 아래 ${n}개`;}
+        if(qType===0){ans=n+2; hint=`위아래 밑면 2개 + 옆면 ${n}개`;}else if(qType===1){ans=n*3; hint=`화면 속 모서리를 세어보세요!`;}else{ans=n*2; hint=`위에 ${n}개, 아래 ${n}개`;}
     } else {
-        if(qType===0){ans=n+1; hint=`바닥 밑면 1개 + 옆면 ${n}개`;}else if(qType===1){ans=n*2; hint=`밑면의 변의 수 × 2`;}else{ans=n+1; hint=`바닥에 꼭짓점 ${n}개, 맨 위 각뿔의 꼭짓점 1개`;}
+        if(qType===0){ans=n+1; hint=`바닥 밑면 1개 + 옆면 ${n}개`;}else if(qType===1){ans=n*2; hint=`바닥 변 ${n}개 + 기둥 모서리 ${n}개`;}else{ans=n+1; hint=`바닥에 꼭짓점 ${n}개, 맨 위 꼭짓점 1개`;}
     }
-    els.questionText.innerHTML = `위 <span class="text-indigo-600 font-bold">${shapeName}</span>의 <span class="text-red-600 border-b-2 border-red-400">${propName}의 수</span>는?`;
+    els.questionText.innerHTML = `위 <span class="text-indigo-600 font-bold">${shapeName}</span>의 <span class="text-red-600 border-b-2 border-red-400">${propName}의 수</span>는 몇 개일까요?`;
     els.hintText.innerText = hint; state.currentProblem = { ans: ans, type: 'input' };
 }
 
@@ -278,11 +317,20 @@ function generateConceptOX() {
     if(shapeMode === 'prism') isPrism = true; if(shapeMode === 'pyramid') isPrism = false;
     const n = getRandomInt(3, 8), shapeNames = ["", "", "", "삼", "사", "오", "육", "칠", "팔"], name = `${shapeNames[n]}각${isPrism ? '기둥' : '뿔'}`;
     draw3DShape(n, isPrism); 
+    
     let qList = [];
-    if (isPrism) { qList.push({ q: `위 도형의 두 밑면은 평행하고 합동입니다.`, ans: "O", hint: "각기둥은 위아래 면이 똑같이 생겼어요." }, { q: `위 도형의 옆면은 모두 삼각형입니다.`, ans: "X", hint: "각기둥 옆면은 직사각형입니다." }); } 
-    else { qList.push({ q: `위 도형의 옆면은 모두 직사각형입니다.`, ans: "X", hint: "각뿔의 옆면은 삼각형이에요." }, { q: `위 도형의 밑면은 1개입니다.`, ans: "O", hint: "바닥에 닿는 면이 1개뿐입니다." }); }
+    if (isPrism) {
+        qList.push({ q: `위 도형의 두 밑면은 서로 평행하고 합동입니다.`, ans: "O", hint: "위아래 면이 평행하고 크기가 똑같아요." });
+        qList.push({ q: `위 도형의 옆면은 모두 삼각형입니다.`, ans: "X", hint: "각기둥의 옆면은 '직사각형'입니다." });
+        qList.push({ q: `밑면의 모양이 ${n}각형이므로, 위 도형의 이름은 '${name}'입니다.`, ans: "O", hint: `밑면의 변의 개수를 세어보세요.` });
+    } else {
+        qList.push({ q: `위 도형의 옆면은 모두 직사각형입니다.`, ans: "X", hint: "뿔처럼 모이는 도형의 옆면은 '삼각형'이에요." });
+        qList.push({ q: `위 도형의 밑면은 1개입니다.`, ans: "O", hint: "바닥에 닿는 면이 1개뿐이에요." });
+        qList.push({ q: `밑면의 모양이 ${n}각형이므로, 위 도형의 이름은 '${name}'입니다.`, ans: "O", hint: `바닥 다각형의 변의 개수를 세어보세요.` });
+    }
+    
     const qObj = qList[getRandomInt(0, qList.length - 1)];
-    els.questionText.innerHTML = `설명이 맞으면 O, 틀리면 X를 고르세요.<br><span class="text-indigo-600 font-bold">"${qObj.q}"</span>`;
+    els.questionText.innerHTML = `설명이 맞으면 O, 틀리면 X를 고르세요.<br><br><span class="text-indigo-600 font-bold">"${qObj.q}"</span>`;
     els.hintText.innerText = qObj.hint; state.currentProblem = { ans: qObj.ans, type: 'OX' };
 }
 
@@ -291,28 +339,28 @@ function generateReverse() {
     if(shapeMode === 'prism') isPrism = true; if(shapeMode === 'pyramid') isPrism = false;
     const n = getRandomInt(4, 10), qType = getRandomInt(0, 2), properties = ["면", "모서리", "꼭짓점"], propName = properties[qType];
     let givenNum = 0, hint = "";
-    if (isPrism) { if(qType===0){givenNum=n+2;}else if(qType===1){givenNum=n*3;}else{givenNum=n*2;} } 
-    else { if(qType===0){givenNum=n+1;}else if(qType===1){givenNum=n*2;}else{givenNum=n+1;} }
-    draw3DShape(getRandomInt(3,5), isPrism); // 랜덤 장식
+    if (isPrism) { if(qType===0){givenNum=n+2; hint="(전체 면의 수 - 2) = 밑면의 변의 수";}else if(qType===1){givenNum=n*3; hint="(전체 모서리 수 ÷ 3) = 밑면의 변의 수";}else{givenNum=n*2; hint="(전체 꼭짓점 수 ÷ 2) = 밑면의 변의 수";} } 
+    else { if(qType===0){givenNum=n+1; hint="(전체 면의 수 - 1) = 밑면의 변의 수";}else if(qType===1){givenNum=n*2; hint="(전체 모서리 수 ÷ 2) = 밑면의 변의 수";}else{givenNum=n+1; hint="(전체 꼭짓점 수 - 1) = 밑면의 변의 수";} }
+    drawCanvasIcon('❓', '무엇일까요?');
     els.questionText.innerHTML = `<span class="text-red-600 border-b-2 border-red-400">${propName}의 수가 ${givenNum}개</span>인 <span class="text-indigo-600 font-bold">${isPrism ? '각기둥' : '각뿔'}</span>이 있습니다. <br>이 도형의 밑면은 몇 각형일까요?`;
-    els.hintText.innerText = "위 그림은 참고용입니다! 규칙을 떠올려보세요."; state.currentProblem = { ans: n, type: 'input' };
+    els.hintText.innerText = hint; state.currentProblem = { ans: n, type: 'input' };
 }
 
 function generateNet() {
     const isOx = Math.random() < 0.4; 
     if (isOx) {
-        setUiMode('ox'); drawPrismNet(getRandomInt(3,6)); // 랜덤 전개도 배경
+        setUiMode('ox'); drawPrismNet(getRandomInt(3,6)); 
         const qList = [
             { q: "전개도에서 접히는 모서리 부분은 점선으로 그립니다.", ans: "O", hint: "가위로 자르는 바깥 선은 실선, 접는 선은 점선이에요." },
             { q: "전개도에서 잘린 모서리(바깥쪽 테두리)는 점선으로 그립니다.", ans: "X", hint: "바깥쪽 테두리는 '실선'으로 그려야 해요." },
             { q: "전개도를 접어 입체도형을 만들 때, 서로 맞닿는 모서리의 길이는 같아야 합니다.", ans: "O", hint: "길이가 다르면 틈이 생깁니다." }
         ];
         const qObj = qList[getRandomInt(0, qList.length - 1)];
-        els.questionText.innerHTML = `전개도 설명이 맞으면 O, 틀리면 X를 고르세요.<br><span class="text-indigo-600 font-bold">"${qObj.q}"</span>`;
+        els.questionText.innerHTML = `전개도 설명이 맞으면 O, 틀리면 X를 고르세요.<br><br><span class="text-indigo-600 font-bold">"${qObj.q}"</span>`;
         els.hintText.innerText = qObj.hint; state.currentProblem = { ans: qObj.ans, type: 'OX' };
     } else {
         setUiMode('input'); const n = getRandomInt(3, 8); const shapeNames = ["", "", "", "삼", "사", "오", "육", "칠", "팔"], shapeName = `${shapeNames[n]}각기둥`;
-        drawPrismNet(n); // 실제 계산된 완벽한 전개도 그리기!
+        drawPrismNet(n); 
         const qType = getRandomInt(0, 1); let ans = 0, qHtml = "", hint = "";
         if (qType === 0) {
             ans = n + 2; qHtml = `위 <span class="text-indigo-600 font-bold">${shapeName}의 전개도</span>에서 <span class="text-red-600 border-b-2 border-red-400">전체 면의 수</span>는 몇 개인가요?`;
