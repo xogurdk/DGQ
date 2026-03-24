@@ -1,5 +1,5 @@
 // ⭐ [중요] 구글 스크립트 '웹 앱 URL'을 반드시 넣어주세요!
-const GAS_API_URL = "여기에_URL을_붙여넣으세요";
+const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxrvXlJ_QsTRfjEJph19xzd0S0Ymu52JYnceJxOgLoN6yD9fWHVkCb-t8PciP4Neu7Raw/exec";
 
 const canvas = document.getElementById('geometryCanvas');
 const ctx = canvas.getContext('2d');
@@ -82,10 +82,10 @@ function finishGame() {
 
 function goToRanking() { screens.result.classList.add('hidden'); tabs.nav.classList.remove('hidden'); switchTab('ranking'); }
 
-// [수정점 1] 모드 변경 시 각뿔 + 전개도 충돌 방지 로직
+// 각뿔 모드일 때 전개도 선택 시 방어 로직
 function resetAndGenerate() { 
     if (els.shapeMode.value === 'pyramid' && els.gameMode.value === 'net') {
-        alert("각뿔의 전개도는 출제되지 않습니다. 자동으로 각기둥 모드로 전환됩니다.");
+        alert("각뿔의 전개도는 현재 버전에서 지원하지 않습니다. 각기둥 모드로 전환됩니다.");
         els.shapeMode.value = 'prism';
     }
     generateProblem(); 
@@ -126,74 +126,112 @@ function draw3DShape(n, isPrism) {
     if (isPrism) { ctx.moveTo(topPts[0].x, topPts[0].y); for(let i=1; i<n; i++) { ctx.lineTo(topPts[i].x, topPts[i].y); } ctx.lineTo(topPts[0].x, topPts[0].y); } ctx.stroke();
 }
 
-// --- 2. 실제 전개도(Net) 그리기 ---
+// --- 2. 실제 전개도(Net) 그리기 (오류 수정 및 랜덤화 적용) ---
 function drawPrismNet(n) {
     ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,canvas.width,canvas.height);
-    let s = Math.min(25, 200 / n); let h = 80;
-    let startX = canvas.width/2 - (n*s)/2; let startY = canvas.height/2 - h/2;
+    let s = Math.min(30, 240 / n); // 캔버스 크기에 맞게 조절
+    let h = 80;
+    let startX = canvas.width/2 - (n*s)/2; 
+    let startY = canvas.height/2 - h/2;
 
-    // 1. 옆면 (직사각형 n개) - 접는 선은 점선
+    // 랜덤하게 밑면이 붙을 옆면 위치 지정 (다양한 전개도 패턴 생성)
+    let topIdx = getRandomInt(0, n-1);
+    let bottomIdx = getRandomInt(0, n-1);
+
+    // 1. 옆면 (직사각형 n개) 그리기
     ctx.beginPath(); ctx.setLineDash([]); ctx.strokeStyle = '#333'; ctx.lineWidth = 2; ctx.fillStyle = '#e0e7ff';
     ctx.rect(startX, startY, n*s, h); ctx.fill(); ctx.stroke(); // 외곽선
     
-    ctx.beginPath(); ctx.setLineDash([5,5]); // 안쪽 접는 선 점선
+    // 안쪽 접는 선 (점선)
+    ctx.beginPath(); ctx.setLineDash([5,5]); 
     for(let i=1; i<n; i++) { ctx.moveTo(startX + i*s, startY); ctx.lineTo(startX + i*s, startY + h); }
     ctx.stroke(); ctx.setLineDash([]);
 
-    // 2. 위아래 밑면 다각형 그리기 함수
-    function drawAttachedPolygon(x, y, dir) {
-        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x+s, y);
-        let curX = x+s, curY = y;
-        let curAngle = (dir === -1) ? -(Math.PI - 2*Math.PI/n) : (Math.PI - 2*Math.PI/n);
-        let turn = (dir === -1) ? -2*Math.PI/n : 2*Math.PI/n;
-        for(let i=0; i<n-1; i++) {
-            curX += s * Math.cos(curAngle); curY += s * Math.sin(curAngle);
-            ctx.lineTo(curX, curY); curAngle += turn;
+    // 2. 정확한 수학 계산으로 밑면 다각형 그리기 (벌어짐 현상 해결)
+    function drawAttachedPolygon(faceIndex, yEdge, isTop) {
+        let x = startX + faceIndex * s;
+        let y = yEdge;
+
+        // 정다각형의 중심점 계산
+        let rApothem = (s / 2) / Math.tan(Math.PI / n);
+        let R = (s / 2) / Math.sin(Math.PI / n);
+        let cx = x + s / 2;
+        let cy = isTop ? y - rApothem : y + rApothem;
+
+        // 다각형 그리기
+        ctx.beginPath();
+        for(let i=0; i<n; i++) {
+            let theta = isTop ? 
+                (Math.PI / 2 - Math.PI / n + i * 2 * Math.PI / n) : 
+                (-Math.PI / 2 + Math.PI / n + i * 2 * Math.PI / n);
+            let px = cx + R * Math.cos(theta);
+            let py = cy + R * Math.sin(theta);
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
         }
-        ctx.closePath(); ctx.fillStyle = '#bfdbfe'; ctx.fill();
-        ctx.setLineDash([]); ctx.stroke(); // 테두리 실선
-        // 붙은 모서리는 다시 점선 처리
-        ctx.beginPath(); ctx.setLineDash([5,5]); ctx.strokeStyle = '#f8fafc'; ctx.lineWidth=3;
+        ctx.closePath();
+        ctx.fillStyle = '#bfdbfe'; ctx.fill();
+        
+        // 다각형 외곽 실선
+        ctx.setLineDash([]); ctx.strokeStyle = '#333'; ctx.lineWidth = 2; ctx.stroke();
+
+        // 덮어쓰기: 옆면과 맞닿는 부분은 잘리는 선이 아니므로 점선으로 복구
+        ctx.beginPath(); ctx.setLineDash([5,5]); 
+        ctx.strokeStyle = '#f8fafc'; ctx.lineWidth = 4; // 실선 지우기
         ctx.moveTo(x, y); ctx.lineTo(x+s, y); ctx.stroke();
-        ctx.beginPath(); ctx.setLineDash([5,5]); ctx.strokeStyle = '#333'; ctx.lineWidth=2;
-        ctx.moveTo(x, y); ctx.lineTo(x+s, y); ctx.stroke(); ctx.setLineDash([]);
+        
+        ctx.beginPath(); ctx.setLineDash([5,5]); 
+        ctx.strokeStyle = '#333'; ctx.lineWidth = 2; // 점선 다시 긋기
+        ctx.moveTo(x, y); ctx.lineTo(x+s, y); ctx.stroke();
+        ctx.setLineDash([]);
     }
-    let mid = Math.floor(n/2);
-    drawAttachedPolygon(startX + mid*s, startY, -1); // 윗면
-    drawAttachedPolygon(startX + mid*s, startY + h, 1); // 아랫면
+
+    drawAttachedPolygon(topIdx, startY, true);       // 윗면
+    drawAttachedPolygon(bottomIdx, startY + h, false); // 아랫면
 }
 
-// --- 3. 다각형 넓이 복습용 도형 그리기 ---
+// --- 3. 다각형 넓이 복습용 도형 그리기 (가독성 극대화) ---
 function drawAreaShape(type, p1, p2, p3) {
     ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.lineWidth = 3; ctx.strokeStyle = '#1e3a8a'; ctx.fillStyle = '#dbeafe';
-    ctx.font = 'bold 22px "Noto Sans KR"'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
 
     const cx = canvas.width / 2, cy = canvas.height / 2;
+    let scale, bw, hh, tw, offset, w, h;
+
+    // 도형 경로 그리기
     if (type === 'triangle') {
-        let scale = 120 / Math.max(p1, p2), bw = p1 * scale, hh = p2 * scale;
+        scale = 100 / Math.max(p1, p2); bw = p1 * scale; hh = p2 * scale;
         ctx.beginPath(); ctx.moveTo(cx - bw/2, cy + hh/2); ctx.lineTo(cx + bw/2, cy + hh/2); ctx.lineTo(cx - bw/4, cy - hh/2); ctx.closePath(); ctx.fill(); ctx.stroke();
         ctx.beginPath(); ctx.setLineDash([5,5]); ctx.strokeStyle = '#ef4444'; ctx.moveTo(cx - bw/4, cy - hh/2); ctx.lineTo(cx - bw/4, cy + hh/2); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle = '#000'; ctx.fillText(`${p1}cm`, cx, cy + hh/2 + 25); ctx.fillStyle = '#ef4444'; ctx.fillText(`${p2}cm`, cx - bw/4 - 35, cy);
+        drawText(`${p1}cm`, cx, cy + hh/2 + 30, '#000'); drawText(`${p2}cm`, cx - bw/4 - 45, cy, '#ef4444');
     } else if (type === 'rectangle') {
-        let scale = 120 / Math.max(p1, p2), ww = p1 * scale, hh = p2 * scale;
-        ctx.fillRect(cx - ww/2, cy - hh/2, ww, hh); ctx.strokeRect(cx - ww/2, cy - hh/2, ww, hh);
-        ctx.fillStyle = '#000'; ctx.fillText(`${p1}cm`, cx, cy + hh/2 + 25); ctx.fillText(`${p2}cm`, cx - ww/2 - 35, cy);
+        scale = 100 / Math.max(p1, p2); w = p1 * scale; h = p2 * scale;
+        ctx.fillRect(cx - w/2, cy - h/2, w, h); ctx.strokeRect(cx - w/2, cy - h/2, w, h);
+        drawText(`${p1}cm`, cx, cy + h/2 + 30, '#000'); drawText(`${p2}cm`, cx - w/2 - 45, cy, '#000');
     } else if (type === 'parallelogram') {
-        let scale = 120 / Math.max(p1, p2), bw = p1 * scale, hh = p2 * scale, offset = hh / 2;
+        scale = 100 / Math.max(p1, p2); bw = p1 * scale; hh = p2 * scale; offset = hh / 2;
         ctx.beginPath(); ctx.moveTo(cx - bw/2 - offset/2, cy + hh/2); ctx.lineTo(cx + bw/2 - offset/2, cy + hh/2); ctx.lineTo(cx + bw/2 + offset/2, cy - hh/2); ctx.lineTo(cx - bw/2 + offset/2, cy - hh/2); ctx.closePath(); ctx.fill(); ctx.stroke();
         ctx.beginPath(); ctx.setLineDash([5,5]); ctx.strokeStyle = '#ef4444'; ctx.moveTo(cx - bw/2 + offset/2, cy - hh/2); ctx.lineTo(cx - bw/2 + offset/2, cy + hh/2); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle = '#000'; ctx.fillText(`${p1}cm`, cx, cy + hh/2 + 25); ctx.fillStyle = '#ef4444'; ctx.fillText(`${p2}cm`, cx - bw/2 + offset/2 - 35, cy);
+        drawText(`${p1}cm`, cx, cy + hh/2 + 30, '#000'); drawText(`${p2}cm`, cx - bw/2 + offset/2 - 45, cy, '#ef4444');
     } else if (type === 'trapezoid') {
-        let scale = 120 / Math.max(p2, p3), tw = p1 * scale, bw = p2 * scale, hh = p3 * scale;
+        scale = 100 / Math.max(p2, p3); tw = p1 * scale; bw = p2 * scale; hh = p3 * scale;
         ctx.beginPath(); ctx.moveTo(cx - bw/2, cy + hh/2); ctx.lineTo(cx + bw/2, cy + hh/2); ctx.lineTo(cx + tw/2 - 10, cy - hh/2); ctx.lineTo(cx - tw/2 - 10, cy - hh/2); ctx.closePath(); ctx.fill(); ctx.stroke();
         ctx.beginPath(); ctx.setLineDash([5,5]); ctx.strokeStyle = '#ef4444'; ctx.moveTo(cx - tw/2 - 10, cy - hh/2); ctx.lineTo(cx - tw/2 - 10, cy + hh/2); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle = '#000'; ctx.fillText(`${p2}cm`, cx, cy + hh/2 + 25); ctx.fillText(`${p1}cm`, cx - 10, cy - hh/2 - 25); ctx.fillStyle = '#ef4444'; ctx.fillText(`${p3}cm`, cx - tw/2 - 45, cy);
+        drawText(`${p2}cm`, cx, cy + hh/2 + 30, '#000'); drawText(`${p1}cm`, cx - 10, cy - hh/2 - 30, '#000'); drawText(`${p3}cm`, cx - tw/2 - 50, cy, '#ef4444');
     } else if (type === 'rhombus') {
-        let scale = 120 / Math.max(p1, p2), w = p1 * scale, h = p2 * scale;
+        scale = 100 / Math.max(p1, p2); w = p1 * scale; h = p2 * scale;
         ctx.beginPath(); ctx.moveTo(cx, cy - h/2); ctx.lineTo(cx + w/2, cy); ctx.lineTo(cx, cy + h/2); ctx.lineTo(cx - w/2, cy); ctx.closePath(); ctx.fill(); ctx.stroke();
         ctx.beginPath(); ctx.setLineDash([5,5]); ctx.strokeStyle = '#ef4444'; ctx.moveTo(cx, cy - h/2); ctx.lineTo(cx, cy + h/2); ctx.moveTo(cx - w/2, cy); ctx.lineTo(cx + w/2, cy); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle = '#ef4444'; ctx.fillText(`${p1}cm`, cx + w/4 + 25, cy - 15); ctx.fillText(`${p2}cm`, cx - 15, cy + h/4 + 25);
+        drawText(`${p1}cm`, cx + w/4 + 35, cy - 25, '#ef4444'); drawText(`${p2}cm`, cx - 25, cy + h/4 + 35, '#ef4444');
+    }
+
+    // [핵심] 가독성을 위해 흰색 아웃라인이 들어간 큰 폰트 적용
+    function drawText(text, x, y, color) {
+        ctx.font = 'bold 28px "Noto Sans KR"'; 
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.lineWidth = 4; ctx.strokeStyle = '#ffffff'; // 흰색 테두리
+        ctx.strokeText(text, x, y); 
+        ctx.fillStyle = color; ctx.fillText(text, x, y);
     }
 }
 
@@ -263,7 +301,7 @@ function generateReverse() {
 function generateNet() {
     const isOx = Math.random() < 0.4; 
     if (isOx) {
-        setUiMode('ox'); drawPrismNet(getRandomInt(3,6)); // 랜덤 전개도 장식
+        setUiMode('ox'); drawPrismNet(getRandomInt(3,6)); // 랜덤 전개도 배경
         const qList = [
             { q: "전개도에서 접히는 모서리 부분은 점선으로 그립니다.", ans: "O", hint: "가위로 자르는 바깥 선은 실선, 접는 선은 점선이에요." },
             { q: "전개도에서 잘린 모서리(바깥쪽 테두리)는 점선으로 그립니다.", ans: "X", hint: "바깥쪽 테두리는 '실선'으로 그려야 해요." },
@@ -274,20 +312,20 @@ function generateNet() {
         els.hintText.innerText = qObj.hint; state.currentProblem = { ans: qObj.ans, type: 'OX' };
     } else {
         setUiMode('input'); const n = getRandomInt(3, 8); const shapeNames = ["", "", "", "삼", "사", "오", "육", "칠", "팔"], shapeName = `${shapeNames[n]}각기둥`;
-        drawPrismNet(n); // 실제 해당 도형의 전개도 그리기!
+        drawPrismNet(n); // 실제 계산된 완벽한 전개도 그리기!
         const qType = getRandomInt(0, 1); let ans = 0, qHtml = "", hint = "";
         if (qType === 0) {
             ans = n + 2; qHtml = `위 <span class="text-indigo-600 font-bold">${shapeName}의 전개도</span>에서 <span class="text-red-600 border-b-2 border-red-400">전체 면의 수</span>는 몇 개인가요?`;
             hint = `화면의 전개도를 직접 세어보세요!`;
         } else {
             ans = n; qHtml = `위 <span class="text-indigo-600 font-bold">${shapeName}의 전개도</span>에서 <span class="text-red-600 border-b-2 border-red-400">직사각형 모양인 옆면</span>은 모두 몇 개일까요?`;
-            hint = `가운데 한 줄로 그려진 직사각형의 개수를 세어보세요.`;
+            hint = `가운데 길게 연결된 직사각형의 개수를 세어보세요.`;
         }
         els.questionText.innerHTML = qHtml; els.hintText.innerText = hint; state.currentProblem = { ans: ans, type: 'input' };
     }
 }
 
-// ⭐ 새로 추가된 다각형 넓이 복습 로직
+// 다각형 넓이 복습 로직
 function generateArea() {
     setUiMode('input');
     const types = ['triangle', 'rectangle', 'parallelogram', 'trapezoid', 'rhombus'], type = types[getRandomInt(0, 4)];
