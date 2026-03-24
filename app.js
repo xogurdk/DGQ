@@ -1,4 +1,4 @@
-// 선생님의 구글 스크립트 웹 앱 URL
+// 선생님의 구글 스크립트 웹 앱 URL (항상 이 주소로 고정됩니다!)
 const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxrvXlJ_QsTRfjEJph19xzd0S0Ymu52JYnceJxOgLoN6yD9fWHVkCb-t8PciP4Neu7Raw/exec";
 
 const canvas = document.getElementById('geometryCanvas');
@@ -82,7 +82,6 @@ function finishGame() {
 
 function goToRanking() { screens.result.classList.add('hidden'); tabs.nav.classList.remove('hidden'); switchTab('ranking'); }
 
-// 각뿔 모드일 때 전개도 선택 시 방어 로직
 function resetAndGenerate() { 
     if (els.shapeMode.value === 'pyramid' && els.gameMode.value === 'net') {
         alert("각뿔의 전개도는 현재 출제되지 않습니다. 자동으로 각기둥 모드로 전환됩니다.");
@@ -115,7 +114,6 @@ function draw3DShape(n, isPrism) {
     }
     const apex = {x: cx, y: cy - h/2 - 20}; 
 
-    // 앞면/뒷면 판별 (수학적 컬링)
     const isFrontFace = [];
     for (let i = 0; i < n; i++) {
         let nxt = (i + 1) % n;
@@ -130,7 +128,6 @@ function draw3DShape(n, isPrism) {
 
     ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; 
     
-    // 점선 그리기
     ctx.setLineDash([5, 5]); ctx.strokeStyle = colorDash; ctx.beginPath();
     for(let i=0; i<n; i++) {
         if (!isFrontFace[i]) { ctx.moveTo(bottomPts[i].x, bottomPts[i].y); ctx.lineTo(bottomPts[(i+1)%n].x, bottomPts[(i+1)%n].y); }
@@ -139,14 +136,12 @@ function draw3DShape(n, isPrism) {
         if (!isFrontEdge[i]) { ctx.moveTo(bottomPts[i].x, bottomPts[i].y); if (isPrism) ctx.lineTo(topPts[i].x, topPts[i].y); else ctx.lineTo(apex.x, apex.y); }
     } ctx.stroke();
     
-    // 윗면 칠하기 (기둥만)
     if (isPrism) { 
         ctx.setLineDash([]); ctx.fillStyle = colorFill; ctx.beginPath(); 
         ctx.moveTo(topPts[0].x, topPts[0].y); for(let i=1; i<n; i++) ctx.lineTo(topPts[i].x, topPts[i].y); 
         ctx.closePath(); ctx.fill(); 
     }
     
-    // 실선 그리기
     ctx.setLineDash([]); ctx.strokeStyle = colorSolid; ctx.beginPath();
     for(let i=0; i<n; i++) {
         if (isFrontFace[i]) { ctx.moveTo(bottomPts[i].x, bottomPts[i].y); ctx.lineTo(bottomPts[(i+1)%n].x, bottomPts[(i+1)%n].y); }
@@ -160,31 +155,29 @@ function draw3DShape(n, isPrism) {
     } ctx.stroke();
 }
 
-// --- 2. 실제 전개도(Net) 랜덤 생성 ---
-function drawPrismNet(n) {
-    ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,canvas.width,canvas.height);
+// --- 2. [완벽 수정] 커스텀 전개도 그리기 (오류 전개도 지원) ---
+function drawCustomNet(n, sideCount, topIndices, bottomIndices) {
+    ctx.clearRect(0,0,canvas.width,canvas.height); 
+    ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,canvas.width,canvas.height);
     
-    // 다각형 크기에 맞게 캔버스에 꽉 차도록 비율 자동 조절
+    // 옆면의 개수에 맞춰 스케일 자동 조절
     let factor = 0.5 / Math.tan(Math.PI/n) + 0.5 / Math.sin(Math.PI/n);
-    let s = Math.min(35, 260 / n, 85 / factor);
+    let maxFacesForWidth = Math.max(sideCount, n);
+    let s = Math.min(35, 260 / maxFacesForWidth, 85 / factor);
     let h = 80;
-    let startX = canvas.width/2 - (n*s)/2;
+    let startX = canvas.width/2 - (sideCount*s)/2;
     let startY = canvas.height/2 - h/2;
-
-    // 랜덤하게 밑면이 붙을 위치 결정
-    let topIdx = getRandomInt(0, n-1);
-    let bottomIdx = getRandomInt(0, n-1);
 
     // 1. 옆면 (직사각형 무리)
     ctx.beginPath(); ctx.setLineDash([]); ctx.strokeStyle = '#333'; ctx.lineWidth = 2; ctx.fillStyle = '#e0e7ff';
-    ctx.rect(startX, startY, n*s, h); ctx.fill(); ctx.stroke();
+    ctx.rect(startX, startY, sideCount*s, h); ctx.fill(); ctx.stroke();
 
     // 2. 접는 선 (점선)
     ctx.beginPath(); ctx.setLineDash([5,5]);
-    for(let i=1; i<n; i++) { ctx.moveTo(startX + i*s, startY); ctx.lineTo(startX + i*s, startY + h); }
+    for(let i=1; i<sideCount; i++) { ctx.moveTo(startX + i*s, startY); ctx.lineTo(startX + i*s, startY + h); }
     ctx.stroke(); ctx.setLineDash([]);
 
-    // 3. 삼각함수로 완벽하게 결합되는 밑면 그리기
+    // 3. 삼각함수로 결합되는 밑면 그리기 (위치 자유 지정)
     function drawAttachedPolygon(faceIndex, yEdge, isTop) {
         let x = startX + faceIndex * s;
         let y = yEdge;
@@ -209,17 +202,17 @@ function drawPrismNet(n) {
 
         // 맞붙은 모서리는 다시 점선으로 덮어쓰기
         ctx.beginPath(); ctx.setLineDash([]);
-        ctx.strokeStyle = '#bfdbfe'; ctx.lineWidth = 4; // 바탕색으로 실선 지우기
+        ctx.strokeStyle = '#bfdbfe'; ctx.lineWidth = 4; // 실선 지우기
         ctx.moveTo(x, y); ctx.lineTo(x+s, y); ctx.stroke();
 
         ctx.beginPath(); ctx.setLineDash([5,5]);
-        ctx.strokeStyle = '#333'; ctx.lineWidth = 2; // 점선으로 복구
+        ctx.strokeStyle = '#333'; ctx.lineWidth = 2; // 점선 복구
         ctx.moveTo(x, y); ctx.lineTo(x+s, y); ctx.stroke();
         ctx.setLineDash([]);
     }
 
-    drawAttachedPolygon(topIdx, startY, true);
-    drawAttachedPolygon(bottomIdx, startY + h, false);
+    topIndices.forEach(idx => drawAttachedPolygon(idx, startY, true));
+    bottomIndices.forEach(idx => drawAttachedPolygon(idx, startY + h, false));
 }
 
 // --- 3. 다각형 넓이 큼직한 폰트 적용 ---
@@ -284,7 +277,7 @@ function generateProblem() {
     let mode = els.gameMode.value;
     if (mode === 'all') {
         let pool = ['elements', 'concept', 'reverse', 'area'];
-        if (els.shapeMode.value !== 'pyramid') pool.push('net'); // 각뿔이 아닐 때만 전개도 추가
+        if (els.shapeMode.value !== 'pyramid') pool.push('net'); 
         mode = pool[getRandomInt(0, pool.length - 1)];
     }
 
@@ -346,31 +339,55 @@ function generateReverse() {
     els.hintText.innerText = hint; state.currentProblem = { ans: n, type: 'input' };
 }
 
+// ⭐ [핵심 업데이트] 전개도 탐구 100% O/X 모드 (올바른/잘못된 전개도 랜덤 출제)
 function generateNet() {
-    const isOx = Math.random() < 0.4; 
-    if (isOx) {
-        setUiMode('ox'); drawPrismNet(getRandomInt(3,6)); 
-        const qList = [
-            { q: "전개도에서 접히는 모서리 부분은 점선으로 그립니다.", ans: "O", hint: "가위로 자르는 바깥 선은 실선, 접는 선은 점선이에요." },
-            { q: "전개도에서 잘린 모서리(바깥쪽 테두리)는 점선으로 그립니다.", ans: "X", hint: "바깥쪽 테두리는 '실선'으로 그려야 해요." },
-            { q: "전개도를 접어 입체도형을 만들 때, 서로 맞닿는 모서리의 길이는 같아야 합니다.", ans: "O", hint: "길이가 다르면 틈이 생깁니다." }
-        ];
-        const qObj = qList[getRandomInt(0, qList.length - 1)];
-        els.questionText.innerHTML = `전개도 설명이 맞으면 O, 틀리면 X를 고르세요.<br><br><span class="text-indigo-600 font-bold">"${qObj.q}"</span>`;
-        els.hintText.innerText = qObj.hint; state.currentProblem = { ans: qObj.ans, type: 'OX' };
+    setUiMode('ox'); 
+    
+    const n = getRandomInt(3, 8); 
+    const shapeNames = ["", "", "", "삼", "사", "오", "육", "칠", "팔"];
+    const shapeName = `${shapeNames[n]}각기둥`;
+
+    // 올바른 전개도를 낼지(O), 잘못된 전개도를 낼지(X) 50% 확률로 결정
+    const isValid = Math.random() < 0.5;
+
+    let sideCount = n;
+    let topIndices = [getRandomInt(0, n-1)];
+    let bottomIndices = [getRandomInt(0, n-1)];
+    let hint = "";
+
+    if (isValid) {
+        hint = `모서리 개수와 밑면의 위치가 정확해 완벽한 ${shapeName}이 됩니다.`;
     } else {
-        setUiMode('input'); const n = getRandomInt(3, 8); const shapeNames = ["", "", "", "삼", "사", "오", "육", "칠", "팔"], shapeName = `${shapeNames[n]}각기둥`;
-        drawPrismNet(n); 
-        const qType = getRandomInt(0, 1); let ans = 0, qHtml = "", hint = "";
-        if (qType === 0) {
-            ans = n + 2; qHtml = `위 <span class="text-indigo-600 font-bold">${shapeName}의 전개도</span>에서 <span class="text-red-600 border-b-2 border-red-400">전체 면의 수</span>는 몇 개인가요?`;
-            hint = `화면의 전개도를 직접 세어보세요!`;
-        } else {
-            ans = n; qHtml = `위 <span class="text-indigo-600 font-bold">${shapeName}의 전개도</span>에서 <span class="text-red-600 border-b-2 border-red-400">직사각형 모양인 옆면</span>은 모두 몇 개일까요?`;
-            hint = `가운데 길게 연결된 직사각형의 개수를 세어보세요.`;
+        // 잘못된 전개도 유형 3가지 중 랜덤 선택
+        const errType = getRandomInt(0, 2);
+        
+        if (errType === 0) { 
+            // 유형 1: 옆면 개수 불일치 (밑면 크기와 안 맞음)
+            sideCount = Math.random() < 0.5 ? n - 1 : n + 1;
+            topIndices = [getRandomInt(0, sideCount - 1)];
+            bottomIndices = [getRandomInt(0, sideCount - 1)];
+            hint = `밑면은 ${n}각형인데, 연결된 옆면(직사각형)이 ${sideCount}개라서 맞지 않아요.`;
+        } 
+        else if (errType === 1) { 
+            // 유형 2: 두 밑면이 같은 쪽에 붙어있음 (접으면 겹침)
+            bottomIndices = [];
+            let t1 = getRandomInt(0, sideCount - 2);
+            let t2 = getRandomInt(t1 + 1, sideCount - 1);
+            topIndices = [t1, t2];
+            hint = `두 밑면이 한쪽에 몰려있어 접으면 겹치고 반대쪽은 뚫리게 됩니다.`;
+        } 
+        else { 
+            // 유형 3: 밑면 개수 부족 (뚜껑이 없음)
+            bottomIndices = [];
+            hint = `밑면이 1개뿐이라 각기둥이 완전히 닫히지 않아요.`;
         }
-        els.questionText.innerHTML = qHtml; els.hintText.innerText = hint; state.currentProblem = { ans: ans, type: 'input' };
     }
+
+    drawCustomNet(n, sideCount, topIndices, bottomIndices);
+
+    els.questionText.innerHTML = `화면의 전개도를 접었을 때 올바른 <span class="text-indigo-600 font-bold">${shapeName}</span>을(를) 만들 수 있을까요?`;
+    els.hintText.innerText = hint; 
+    state.currentProblem = { ans: isValid ? "O" : "X", type: 'OX' };
 }
 
 // 다각형 넓이 복습 로직
