@@ -1,4 +1,4 @@
-// ⭐ 선생님의 구글 스크립트 웹 앱 URL (영구 고정)
+// 선생님의 구글 스크립트 웹 앱 URL (항상 이 주소로 고정됩니다!)
 const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxrvXlJ_QsTRfjEJph19xzd0S0Ymu52JYnceJxOgLoN6yD9fWHVkCb-t8PciP4Neu7Raw/exec";
 
 const canvas = document.getElementById('geometryCanvas');
@@ -84,7 +84,7 @@ function goToRanking() { screens.result.classList.add('hidden'); tabs.nav.classL
 
 function resetAndGenerate() { 
     if (els.shapeMode.value === 'pyramid' && (els.gameMode.value === 'net' || els.gameMode.value === 'hard_net')) {
-        alert("각뿔의 전개도는 현재 출제되지 않습니다. 자동으로 각기둥 모드로 전환됩니다.");
+        alert("각뿔의 전개도는 출제되지 않습니다. 자동으로 각기둥 모드로 전환됩니다.");
         els.shapeMode.value = 'prism';
     }
     generateProblem(); 
@@ -155,7 +155,7 @@ function draw3DShape(n, isPrism) {
     } ctx.stroke();
 }
 
-// --- 2. 일반 전개도(Net) 랜덤 생성 (직선형) ---
+// --- 2. 직선형 전개도(Net) 랜덤 생성 ---
 function drawOffsetNet(nTop, nBottom, sideCount, topIndices, bottomIndices) {
     ctx.resetTransform(); ctx.clearRect(0,0,canvas.width,canvas.height); 
     ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -206,7 +206,7 @@ function drawOffsetNet(nTop, nBottom, sideCount, topIndices, bottomIndices) {
     ctx.resetTransform();
 }
 
-// --- 3. [하드모드 전용] 프로펠러/꽃 모양 다각형 전개도 ---
+// --- 3. [하드모드 전용] 프로펠러/별 모양 전개도 ---
 function drawPropellerNet(n, isValid, errType) {
     ctx.resetTransform(); ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -223,15 +223,17 @@ function drawPropellerNet(n, isValid, errType) {
     ctx.beginPath();
     for(let i=0; i<n; i++) {
         let angle = i * 2*Math.PI/n;
-        ctx.lineTo(R * Math.cos(angle), R * Math.sin(angle));
+        if(i===0) ctx.moveTo(R * Math.cos(angle), R * Math.sin(angle));
+        else ctx.lineTo(R * Math.cos(angle), R * Math.sin(angle));
     }
     ctx.closePath();
     ctx.fillStyle = '#bfdbfe'; ctx.fill(); 
     ctx.strokeStyle = '#333'; ctx.lineWidth = 2; ctx.stroke();
 
-    let skipIdx = (!isValid && errType === 0) ? getRandomInt(0, n-1) : -1; // 사각형 누락
-    let base2Idx = getRandomInt(0, n-1); // 두 번째 밑면 위치
-    let base3Idx = (!isValid && errType === 1) ? (base2Idx + 1)%n : -1; // 밑면 겹침(두 개가 같은 쪽에)
+    // 0: 사각형 누락, 1: 밑면 겹침, 2: 밑면 누락, 3: 모양 짝짝이, 4: 옆구리 부착
+    let skipIdx = (!isValid && errType === 0) ? getRandomInt(0, n-1) : -1; 
+    let base2Idx = getRandomInt(0, n-1); 
+    while(base2Idx === skipIdx) { base2Idx = getRandomInt(0, n-1); }
 
     for(let i=0; i<n; i++) {
         if (i === skipIdx) continue;
@@ -249,14 +251,14 @@ function drawPropellerNet(n, isValid, errType) {
         ctx.beginPath(); ctx.setLineDash([5,5]); ctx.moveTo(-s/2, 0); ctx.lineTo(s/2, 0); ctx.stroke(); ctx.setLineDash([]);
 
         // 두 번째 밑면 부착
-        if (i === base2Idx || i === base3Idx) {
+        if (i === base2Idx) {
             let n2 = n;
-            if (!isValid && errType === 2) n2 = n===3 ? 4 : n-1; // 짝짝이 다각형
-            if (!isValid && errType === 3) n2 = 0; // 밑면 누락
+            if (!isValid && errType === 3) n2 = n===3 ? 4 : (Math.random() < 0.5 ? n - 1 : n + 1); // 짝짝이
+            if (!isValid && errType === 2) n2 = 0; // 밑면 누락
             
             if (n2 > 0) {
-                if (!isValid && errType === 4 && i === base2Idx) {
-                    // 직사각형의 '옆구리(긴 면)'에 다각형이 붙은 치명적 오류 구현
+                if (!isValid && errType === 4) {
+                    // 직사각형의 '옆구리(긴 면)'에 다각형이 붙은 치명적 오류
                     ctx.translate(s/2, h/2);
                     ctx.rotate(-Math.PI/2);
                     ctx.beginPath(); ctx.setLineDash([5,5]); ctx.moveTo(-h/2, 0); ctx.lineTo(h/2, 0); ctx.stroke(); ctx.setLineDash([]);
@@ -267,11 +269,12 @@ function drawPropellerNet(n, isValid, errType) {
                     ctx.beginPath();
                     for(let j=0; j<n2; j++) {
                         let a2 = -Math.PI/2 - Math.PI/n2 + j * 2*Math.PI/n2;
-                        ctx.lineTo(R2 * Math.cos(a2), R2 * Math.sin(a2));
+                        if(j===0) ctx.moveTo(R2 * Math.cos(a2), R2 * Math.sin(a2));
+                        else ctx.lineTo(R2 * Math.cos(a2), R2 * Math.sin(a2));
                     }
                     ctx.closePath(); ctx.fillStyle = '#bfdbfe'; ctx.fill(); ctx.stroke();
                 } else {
-                    // 정상 부착 위치 (직사각형 바깥쪽 끝)
+                    // 정상 부착 위치
                     ctx.translate(0, h);
                     ctx.beginPath(); ctx.setLineDash([5,5]); ctx.moveTo(-s/2, 0); ctx.lineTo(s/2, 0); ctx.stroke(); ctx.setLineDash([]);
                     
@@ -281,7 +284,8 @@ function drawPropellerNet(n, isValid, errType) {
                     ctx.beginPath();
                     for(let j=0; j<n2; j++) {
                         let a2 = -Math.PI/2 - Math.PI/n2 + j * 2*Math.PI/n2;
-                        ctx.lineTo(R2 * Math.cos(a2), R2 * Math.sin(a2));
+                        if(j===0) ctx.moveTo(R2 * Math.cos(a2), R2 * Math.sin(a2));
+                        else ctx.lineTo(R2 * Math.cos(a2), R2 * Math.sin(a2));
                     }
                     ctx.closePath(); ctx.fillStyle = '#bfdbfe'; ctx.fill(); ctx.stroke();
                 }
@@ -292,7 +296,7 @@ function drawPropellerNet(n, isValid, errType) {
     ctx.resetTransform();
 }
 
-// --- 4. 다각형 넓이 복습용 도형 그리기 ---
+// --- 4. 다각형 넓이 복습용 도형 ---
 function drawAreaShape(type, p1, p2, p3) {
     ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.lineWidth = 3; ctx.strokeStyle = '#1e3a8a'; ctx.fillStyle = '#dbeafe';
@@ -344,7 +348,6 @@ function drawCanvasIcon(icon, title) {
     ctx.fillText(title, canvas.width/2, canvas.height/2 + 50);
 }
 
-// 메인 문제 출제 제어
 function generateProblem() {
     if (state.problemCount > state.maxProblems) { finishGame(); return; }
     state.attempts = 0; els.count.innerText = state.problemCount; els.progress.style.width = `${((state.problemCount - 1) / state.maxProblems) * 100}%`;
@@ -361,8 +364,8 @@ function generateProblem() {
     if (mode === 'elements') generateElements();
     else if (mode === 'concept') generateConceptOX();
     else if (mode === 'reverse') generateReverse();
-    else if (mode === 'net') generateNet(false); // 일반 전개도
-    else if (mode === 'hard_net') generateNet(true); // 하드모드 전개도
+    else if (mode === 'net') generateNet(false); 
+    else if (mode === 'hard_net') generateNet(true); 
     else if (mode === 'area') generateArea();
 }
 
@@ -417,7 +420,7 @@ function generateReverse() {
     els.hintText.innerText = hint; state.currentProblem = { ans: n, type: 'input', mode: 'normal' };
 }
 
-// ⭐ [전면 개편] 전개도 출제 함수 (isHard 모드 분기)
+// ⭐ [하드모드 버그 해결] Scope(범위) 오류 수정 및 다양한 함정 출제 완료
 function generateNet(isHard) {
     setUiMode('ox'); 
     
@@ -431,17 +434,18 @@ function generateNet(isHard) {
     let topIndices = [getRandomInt(0, n-1)];
     let bottomIndices = [getRandomInt(0, n-1)];
     let hint = "";
+    let errType = -1; // Scope 오류를 해결하기 위해 밖에서 미리 선언!
 
     if (isValid) {
         hint = `밑면의 위치와 모양, 옆면의 개수가 정확해 완벽한 ${shapeName}이 됩니다.`;
     } else {
-        const errType = isHard ? getRandomInt(0, 4) : getRandomInt(0, 3); // 하드는 더 다양한 오류 제공
+        errType = isHard ? getRandomInt(0, 4) : getRandomInt(0, 3);
         
         if (errType === 0) { 
-            sideCount = Math.random() < 0.5 ? n - 1 : n + 1;
+            sideCount = n - 1; // 옆면 개수 부족
             topIndices = [getRandomInt(0, sideCount - 1)];
             bottomIndices = [getRandomInt(0, sideCount - 1)];
-            hint = `밑면은 ${n}각형인데 옆면(직사각형)이 ${sideCount}개라 짝이 안 맞아요.`;
+            hint = `밑면은 ${n}각형인데 연결된 옆면이 ${sideCount}개라 개수가 안 맞아요.`;
         } 
         else if (errType === 1) { 
             bottomIndices = [];
@@ -460,23 +464,24 @@ function generateNet(isHard) {
             hint = `윗면은 ${nTop}각형, 아랫면은 ${nBottom}각형이라 모양이 달라요.`;
         }
         else if (errType === 4 && isHard) {
-            // 하드 전용 오류: 모서리 부착 오류 (drawPropellerNet 내부에서 처리됨)
             hint = `밑면이 직사각형의 긴 쪽 가장자리에 잘못 붙어있어요.`;
         }
     }
 
+    let usePropeller = false;
     if (isHard) {
-        // 하드모드: 50% 확률로 별모양/오프셋 모양 선택, 단 errType 4는 무조건 별모양
-        if ((!isValid && errType === 4) || Math.random() < 0.5) {
-            drawPropellerNet(n, isValid, errType);
-        } else {
-            drawOffsetNet(nTop, nBottom, sideCount, topIndices, bottomIndices);
-        }
+        if (!isValid && errType === 4) usePropeller = true;
+        else if (!isValid && errType === 1) usePropeller = false; // 같은 쪽에 밑면이 붙는 오류는 프로펠러형으로 표현하기 어려움
+        else usePropeller = Math.random() < 0.5;
+    }
+
+    if (usePropeller) {
+        drawPropellerNet(n, isValid, errType);
         els.questionText.innerHTML = `🔥 하드모드: 이 전개도를 접어 완벽한 <span class="text-indigo-600 font-bold">${shapeName}</span>을(를) 만들 수 있을까요?`;
     } else {
-        // 일반모드: 일렬로 늘어선 오프셋 전개도 위주
         drawOffsetNet(nTop, nBottom, sideCount, topIndices, bottomIndices);
-        els.questionText.innerHTML = `이 전개도를 접어 올바른 <span class="text-indigo-600 font-bold">${shapeName}</span>을(를) 만들 수 있을까요?`;
+        if (isHard) els.questionText.innerHTML = `🔥 하드모드: 이 전개도를 접어 완벽한 <span class="text-indigo-600 font-bold">${shapeName}</span>을(를) 만들 수 있을까요?`;
+        else els.questionText.innerHTML = `이 전개도를 접어 올바른 <span class="text-indigo-600 font-bold">${shapeName}</span>을(를) 만들 수 있을까요?`;
     }
 
     els.hintText.innerText = hint; 
@@ -515,7 +520,7 @@ function setUiMode(mode) {
     else { els.inputArea.classList.remove('hidden'); els.inputArea.classList.add('flex'); els.oxArea.classList.add('hidden'); els.oxArea.classList.remove('flex'); els.ansInput.focus(); }
 }
 
-// ⭐ [채점 업데이트] O/X 1회 제한 & 하드모드 +20/-20점 반영
+// ⭐ [채점 로직] O/X 기회 1번 & 하드모드 +20/-20점 완벽 적용
 function checkAnswer(choice) {
     if(!els.nextBtn.classList.contains('hidden')) return;
     let correct = false, uAns = choice;
@@ -528,7 +533,6 @@ function checkAnswer(choice) {
     if(uAns === state.currentProblem.ans) correct = true;
     
     if(state.currentProblem.type === 'OX') {
-        // 문제 모드에 따른 점수 설정
         let pointValue = (state.currentProblem.mode === 'hard_net') ? 20 : 10;
         
         if(correct) {
@@ -538,7 +542,7 @@ function checkAnswer(choice) {
         } else {
             state.score -= pointValue; els.score.innerText = state.score; 
             els.feedback.innerHTML = `<span class='text-red-600 font-bold'>아쉽네요. 정답은 '${state.currentProblem.ans}'입니다. (-${pointValue}점 감점)</span>`; 
-            els.hintBox.classList.remove('hidden'); endProblem();
+            els.hintBox.classList.remove('hidden'); endProblem(); // 기회 박탈
         }
         return; 
     }
