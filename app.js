@@ -1,4 +1,4 @@
-// 선생님의 구글 스크립트 웹 앱 URL (항상 이 주소로 고정됩니다!)
+// ⭐ 선생님의 구글 스크립트 웹 앱 URL (항상 이 주소로 고정됩니다!)
 const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxrvXlJ_QsTRfjEJph19xzd0S0Ymu52JYnceJxOgLoN6yD9fWHVkCb-t8PciP4Neu7Raw/exec";
 
 const canvas = document.getElementById('geometryCanvas');
@@ -92,78 +92,54 @@ function resetAndGenerate() {
 
 function getRandomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
-// --- 1. 3D 입체도형(겨냥도) 은선 처리 ---
+// --- 1. 3D 겨냥도 은선 처리 ---
 function draw3DShape(n, isPrism) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height); 
-    ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    const cx = canvas.width / 2, cy = canvas.height / 2 + (isPrism ? 0 : 20);
-    const r = 40 + (n * 2.5), h = 100;
-    const hue = Math.floor(Math.random() * 360);
-    const colorSolid = `hsl(${hue}, 70%, 40%)`, colorFill = `hsla(${hue}, 70%, 60%, 0.15)`, colorDash = `hsla(${hue}, 70%, 40%, 0.6)`;
-
-    const bottomPts = [], topPts = [], angles = []; 
-    const offset = Math.PI / 2 + 0.3; 
+    ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const cx = canvas.width / 2, cy = canvas.height / 2 + (isPrism ? 0 : 20), r = 40 + (n * 2.5), h = 100;
+    const hue = Math.floor(Math.random() * 360), colorSolid = `hsl(${hue}, 70%, 40%)`, colorFill = `hsla(${hue}, 70%, 60%, 0.15)`, colorDash = `hsla(${hue}, 70%, 40%, 0.6)`;
+    const bottomPts = [], topPts = [], angles = []; const offset = Math.PI / 2 + 0.3; 
 
     for(let i=0; i<n; i++) {
         let angle = offset + (i * 2 * Math.PI / n); angles.push(angle);
-        let x = cx + r * Math.cos(angle);
-        let yBottom = cy + r * 0.3 * Math.sin(angle) + h/2;
-        let yTop = cy + r * 0.3 * Math.sin(angle) - h/2;
+        let x = cx + r * Math.cos(angle), yBottom = cy + r * 0.3 * Math.sin(angle) + h/2, yTop = cy + r * 0.3 * Math.sin(angle) - h/2;
         bottomPts.push({x, y: yBottom}); topPts.push({x, y: yTop});
     }
     const apex = {x: cx, y: cy - h/2 - 20}; 
 
     const isFrontFace = [];
-    for (let i = 0; i < n; i++) {
-        let nxt = (i + 1) % n;
-        let midY = Math.sin(angles[i]) + Math.sin(angles[nxt]);
-        isFrontFace.push(midY >= -0.001); 
-    }
+    for (let i = 0; i < n; i++) { let nxt = (i + 1) % n; let midY = Math.sin(angles[i]) + Math.sin(angles[nxt]); isFrontFace.push(midY >= -0.001); }
     const isFrontEdge = [];
-    for (let i = 0; i < n; i++) {
-        let prev = (i - 1 + n) % n;
-        isFrontEdge.push(isFrontFace[prev] || isFrontFace[i]); 
-    }
+    for (let i = 0; i < n; i++) { let prev = (i - 1 + n) % n; isFrontEdge.push(isFrontFace[prev] || isFrontFace[i]); }
 
     ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; 
     
     ctx.setLineDash([5, 5]); ctx.strokeStyle = colorDash; ctx.beginPath();
-    for(let i=0; i<n; i++) {
-        if (!isFrontFace[i]) { ctx.moveTo(bottomPts[i].x, bottomPts[i].y); ctx.lineTo(bottomPts[(i+1)%n].x, bottomPts[(i+1)%n].y); }
-    }
-    for(let i=0; i<n; i++) {
-        if (!isFrontEdge[i]) { ctx.moveTo(bottomPts[i].x, bottomPts[i].y); if (isPrism) ctx.lineTo(topPts[i].x, topPts[i].y); else ctx.lineTo(apex.x, apex.y); }
-    } ctx.stroke();
+    for(let i=0; i<n; i++) { if (!isFrontFace[i]) { ctx.moveTo(bottomPts[i].x, bottomPts[i].y); ctx.lineTo(bottomPts[(i+1)%n].x, bottomPts[(i+1)%n].y); } }
+    for(let i=0; i<n; i++) { if (!isFrontEdge[i]) { ctx.moveTo(bottomPts[i].x, bottomPts[i].y); if (isPrism) ctx.lineTo(topPts[i].x, topPts[i].y); else ctx.lineTo(apex.x, apex.y); } } ctx.stroke();
     
-    if (isPrism) { 
-        ctx.setLineDash([]); ctx.fillStyle = colorFill; ctx.beginPath(); 
-        ctx.moveTo(topPts[0].x, topPts[0].y); for(let i=1; i<n; i++) ctx.lineTo(topPts[i].x, topPts[i].y); 
-        ctx.closePath(); ctx.fill(); 
-    }
+    if (isPrism) { ctx.setLineDash([]); ctx.fillStyle = colorFill; ctx.beginPath(); ctx.moveTo(topPts[0].x, topPts[0].y); for(let i=1; i<n; i++) ctx.lineTo(topPts[i].x, topPts[i].y); ctx.closePath(); ctx.fill(); }
     
     ctx.setLineDash([]); ctx.strokeStyle = colorSolid; ctx.beginPath();
-    for(let i=0; i<n; i++) {
-        if (isFrontFace[i]) { ctx.moveTo(bottomPts[i].x, bottomPts[i].y); ctx.lineTo(bottomPts[(i+1)%n].x, bottomPts[(i+1)%n].y); }
-    }
-    for(let i=0; i<n; i++) {
-        if (isFrontEdge[i]) { ctx.moveTo(bottomPts[i].x, bottomPts[i].y); if (isPrism) ctx.lineTo(topPts[i].x, topPts[i].y); else ctx.lineTo(apex.x, apex.y); }
-    }
-    if (isPrism) { 
-        ctx.moveTo(topPts[0].x, topPts[0].y); for(let i=1; i<n; i++) ctx.lineTo(topPts[i].x, topPts[i].y); 
-        ctx.closePath();
-    } ctx.stroke();
+    for(let i=0; i<n; i++) { if (isFrontFace[i]) { ctx.moveTo(bottomPts[i].x, bottomPts[i].y); ctx.lineTo(bottomPts[(i+1)%n].x, bottomPts[(i+1)%n].y); } }
+    for(let i=0; i<n; i++) { if (isFrontEdge[i]) { ctx.moveTo(bottomPts[i].x, bottomPts[i].y); if (isPrism) ctx.lineTo(topPts[i].x, topPts[i].y); else ctx.lineTo(apex.x, apex.y); } }
+    if (isPrism) { ctx.moveTo(topPts[0].x, topPts[0].y); for(let i=1; i<n; i++) ctx.lineTo(topPts[i].x, topPts[i].y); ctx.closePath(); } ctx.stroke();
 }
 
-// --- 2. 직선형 전개도(Net) 랜덤 생성 ---
+// --- 2. 일렬형 전개도 (스케일 자동 조절 방어) ---
 function drawOffsetNet(nTop, nBottom, sideCount, topIndices, bottomIndices) {
-    ctx.resetTransform(); ctx.clearRect(0,0,canvas.width,canvas.height); 
-    ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.resetTransform(); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,canvas.width,canvas.height);
     
-    let maxN = Math.max(nTop, nBottom, 3);
-    let factor = 0.5 / Math.tan(Math.PI/maxN) + 0.5 / Math.sin(Math.PI/maxN);
-    let s = Math.min(30, 260 / Math.max(sideCount, maxN), 80 / factor);
-    let h = 80;
+    let maxN = Math.max(nTop || 3, nBottom || 3, 3);
+    let R_factor = 0.5 / Math.sin(Math.PI / maxN);
+    let r_factor = 0.5 / Math.tan(Math.PI / maxN);
+    
+    // 화면을 넘어가지 않도록 안전한 s(길이) 계산
+    let requiredW = Math.max(sideCount, 3);
+    let requiredH = 2.5 + 2 * (R_factor + r_factor); 
+    
+    let s = Math.min((canvas.width * 0.85) / requiredW, (canvas.height * 0.85) / requiredH, 35);
+    let h = s * 2.5;
+
     let startX = canvas.width/2 - (sideCount*s)/2;
     let startY = canvas.height/2 - h/2;
 
@@ -173,8 +149,7 @@ function drawOffsetNet(nTop, nBottom, sideCount, topIndices, bottomIndices) {
     ctx.rect(0, 0, sideCount*s, h); ctx.fill(); ctx.stroke();
 
     ctx.beginPath(); ctx.setLineDash([5,5]);
-    for(let i=1; i<sideCount; i++) { ctx.moveTo(i*s, 0); ctx.lineTo(i*s, h); }
-    ctx.stroke(); ctx.setLineDash([]);
+    for(let i=1; i<sideCount; i++) { ctx.moveTo(i*s, 0); ctx.lineTo(i*s, h); } ctx.stroke(); ctx.setLineDash([]);
 
     function drawPoly(idx, isTop, polyN) {
         if(!polyN || polyN < 3) return;
@@ -190,15 +165,14 @@ function drawOffsetNet(nTop, nBottom, sideCount, topIndices, bottomIndices) {
             let px = cx + R * Math.cos(theta);
             let py = cy + R * Math.sin(theta);
             if(i===0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-        }
-        ctx.closePath();
+        } ctx.closePath();
         ctx.fillStyle = '#bfdbfe'; ctx.fill(); ctx.stroke();
         
+        // 겹치는 모서리 지우고 점선 덮어쓰기
         ctx.beginPath(); ctx.strokeStyle = '#bfdbfe'; ctx.lineWidth = 4;
         ctx.moveTo(idx*s, isTop ? 0 : h); ctx.lineTo(idx*s+s, isTop ? 0 : h); ctx.stroke();
         ctx.beginPath(); ctx.strokeStyle = '#333'; ctx.lineWidth = 2; ctx.setLineDash([5,5]);
-        ctx.moveTo(idx*s, isTop ? 0 : h); ctx.lineTo(idx*s+s, isTop ? 0 : h); ctx.stroke();
-        ctx.setLineDash([]);
+        ctx.moveTo(idx*s, isTop ? 0 : h); ctx.lineTo(idx*s+s, isTop ? 0 : h); ctx.stroke(); ctx.setLineDash([]);
     }
 
     topIndices.forEach(idx => drawPoly(idx, true, nTop));
@@ -206,31 +180,31 @@ function drawOffsetNet(nTop, nBottom, sideCount, topIndices, bottomIndices) {
     ctx.resetTransform();
 }
 
-// --- 3. [하드모드 전용] 프로펠러/별 모양 전개도 ---
+// --- 3. [하드모드 전용] 프로펠러형 전개도 (스케일 자동 조절 방어) ---
 function drawPropellerNet(n, isValid, errType) {
-    ctx.resetTransform(); ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.resetTransform(); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,canvas.width,canvas.height);
     
-    let factor = 1 / Math.sin(Math.PI/n);
-    let s = Math.min(30, 90 / factor); 
-    let h = 60;
-    let R = (s/2) / Math.sin(Math.PI/n);
-    let apothem = (s/2) / Math.tan(Math.PI/n);
+    // 화면 이탈 방지 스케일
+    let R_factor = 0.5 / Math.sin(Math.PI/n);
+    let r_factor = 0.5 / Math.tan(Math.PI/n);
+    let spanFactor = 2.5 + 4 * (R_factor + r_factor); 
+    let s = Math.min((canvas.height * 0.85) / spanFactor, 25); 
+    let h = s * 2.5;
+    let R = s * R_factor;
+    let apothem = s * r_factor;
     
     ctx.translate(canvas.width/2, canvas.height/2);
     
-    // 중앙 밑면 (Base 1)
+    // 1. 중앙 첫 번째 밑면 
     ctx.beginPath();
     for(let i=0; i<n; i++) {
         let angle = i * 2*Math.PI/n;
         if(i===0) ctx.moveTo(R * Math.cos(angle), R * Math.sin(angle));
         else ctx.lineTo(R * Math.cos(angle), R * Math.sin(angle));
-    }
-    ctx.closePath();
-    ctx.fillStyle = '#bfdbfe'; ctx.fill(); 
-    ctx.strokeStyle = '#333'; ctx.lineWidth = 2; ctx.stroke();
+    } ctx.closePath();
+    ctx.fillStyle = '#bfdbfe'; ctx.fill(); ctx.strokeStyle = '#333'; ctx.lineWidth = 2; ctx.stroke();
 
-    // 0: 사각형 누락, 1: 밑면 겹침, 2: 밑면 누락, 3: 모양 짝짝이, 4: 옆구리 부착
+    // 에러 타입 제어 변수
     let skipIdx = (!isValid && errType === 0) ? getRandomInt(0, n-1) : -1; 
     let base2Idx = getRandomInt(0, n-1); 
     while(base2Idx === skipIdx) { base2Idx = getRandomInt(0, n-1); }
@@ -243,51 +217,63 @@ function drawPropellerNet(n, isValid, errType) {
         ctx.translate(apothem * Math.cos(angle), apothem * Math.sin(angle));
         ctx.rotate(angle - Math.PI/2);
         
-        // 직사각형 옆면
-        ctx.beginPath(); ctx.rect(-s/2, 0, s, h);
-        ctx.fillStyle = '#e0e7ff'; ctx.fill(); ctx.stroke();
-        
-        // 안쪽 접는 선 (점선)
+        // 옆면(직사각형)
+        ctx.beginPath(); ctx.rect(-s/2, 0, s, h); ctx.fillStyle = '#e0e7ff'; ctx.fill(); ctx.stroke();
         ctx.beginPath(); ctx.setLineDash([5,5]); ctx.moveTo(-s/2, 0); ctx.lineTo(s/2, 0); ctx.stroke(); ctx.setLineDash([]);
 
         // 두 번째 밑면 부착
         if (i === base2Idx) {
             let n2 = n;
-            if (!isValid && errType === 3) n2 = n===3 ? 4 : (Math.random() < 0.5 ? n - 1 : n + 1); // 짝짝이
-            if (!isValid && errType === 2) n2 = 0; // 밑면 누락
+            if (!isValid && errType === 3) n2 = n===3 ? 4 : (Math.random() < 0.5 ? n - 1 : n + 1); 
+            if (!isValid && errType === 2) n2 = 0; 
             
             if (n2 > 0) {
                 if (!isValid && errType === 4) {
-                    // 직사각형의 '옆구리(긴 면)'에 다각형이 붙은 치명적 오류
-                    ctx.translate(s/2, h/2);
-                    ctx.rotate(-Math.PI/2);
+                    // 치명적 오류: 긴 옆구리에 부착
+                    ctx.translate(s/2, h/2); ctx.rotate(-Math.PI/2);
                     ctx.beginPath(); ctx.setLineDash([5,5]); ctx.moveTo(-h/2, 0); ctx.lineTo(h/2, 0); ctx.stroke(); ctx.setLineDash([]);
                     
-                    let R2 = (s/2) / Math.sin(Math.PI/n2);
-                    let apo2 = (s/2) / Math.tan(Math.PI/n2);
+                    let R2 = (s/2) / Math.sin(Math.PI/n2); let apo2 = (s/2) / Math.tan(Math.PI/n2);
                     ctx.translate(0, apo2);
                     ctx.beginPath();
                     for(let j=0; j<n2; j++) {
                         let a2 = -Math.PI/2 - Math.PI/n2 + j * 2*Math.PI/n2;
-                        if(j===0) ctx.moveTo(R2 * Math.cos(a2), R2 * Math.sin(a2));
-                        else ctx.lineTo(R2 * Math.cos(a2), R2 * Math.sin(a2));
-                    }
-                    ctx.closePath(); ctx.fillStyle = '#bfdbfe'; ctx.fill(); ctx.stroke();
-                } else {
-                    // 정상 부착 위치
+                        if(j===0) ctx.moveTo(R2 * Math.cos(a2), R2 * Math.sin(a2)); else ctx.lineTo(R2 * Math.cos(a2), R2 * Math.sin(a2));
+                    } ctx.closePath(); ctx.fillStyle = '#bfdbfe'; ctx.fill(); ctx.stroke();
+                } else if (!isValid && errType === 5) {
+                    // 치명적 오류: 한쪽 날개에 두 개의 밑면이 다닥다닥 붙음
                     ctx.translate(0, h);
                     ctx.beginPath(); ctx.setLineDash([5,5]); ctx.moveTo(-s/2, 0); ctx.lineTo(s/2, 0); ctx.stroke(); ctx.setLineDash([]);
                     
-                    let R2 = (s/2) / Math.sin(Math.PI/n2);
-                    let apo2 = (s/2) / Math.tan(Math.PI/n2);
+                    let R2 = (s/2) / Math.sin(Math.PI/n2); let apo2 = (s/2) / Math.tan(Math.PI/n2);
                     ctx.translate(0, apo2);
                     ctx.beginPath();
                     for(let j=0; j<n2; j++) {
                         let a2 = -Math.PI/2 - Math.PI/n2 + j * 2*Math.PI/n2;
-                        if(j===0) ctx.moveTo(R2 * Math.cos(a2), R2 * Math.sin(a2));
-                        else ctx.lineTo(R2 * Math.cos(a2), R2 * Math.sin(a2));
-                    }
-                    ctx.closePath(); ctx.fillStyle = '#bfdbfe'; ctx.fill(); ctx.stroke();
+                        if(j===0) ctx.moveTo(R2 * Math.cos(a2), R2 * Math.sin(a2)); else ctx.lineTo(R2 * Math.cos(a2), R2 * Math.sin(a2));
+                    } ctx.closePath(); ctx.fillStyle = '#bfdbfe'; ctx.fill(); ctx.stroke();
+
+                    // 한 번 더 붙이기
+                    ctx.translate(0, apo2);
+                    ctx.beginPath(); ctx.setLineDash([5,5]); ctx.moveTo(-s/2, 0); ctx.lineTo(s/2, 0); ctx.stroke(); ctx.setLineDash([]);
+                    ctx.translate(0, apo2);
+                    ctx.beginPath();
+                    for(let j=0; j<n2; j++) {
+                        let a2 = -Math.PI/2 - Math.PI/n2 + j * 2*Math.PI/n2;
+                        if(j===0) ctx.moveTo(R2 * Math.cos(a2), R2 * Math.sin(a2)); else ctx.lineTo(R2 * Math.cos(a2), R2 * Math.sin(a2));
+                    } ctx.closePath(); ctx.fillStyle = '#bfdbfe'; ctx.fill(); ctx.stroke();
+                } else {
+                    // 정상 부착
+                    ctx.translate(0, h);
+                    ctx.beginPath(); ctx.setLineDash([5,5]); ctx.moveTo(-s/2, 0); ctx.lineTo(s/2, 0); ctx.stroke(); ctx.setLineDash([]);
+                    
+                    let R2 = (s/2) / Math.sin(Math.PI/n2); let apo2 = (s/2) / Math.tan(Math.PI/n2);
+                    ctx.translate(0, apo2);
+                    ctx.beginPath();
+                    for(let j=0; j<n2; j++) {
+                        let a2 = -Math.PI/2 - Math.PI/n2 + j * 2*Math.PI/n2;
+                        if(j===0) ctx.moveTo(R2 * Math.cos(a2), R2 * Math.sin(a2)); else ctx.lineTo(R2 * Math.cos(a2), R2 * Math.sin(a2));
+                    } ctx.closePath(); ctx.fillStyle = '#bfdbfe'; ctx.fill(); ctx.stroke();
                 }
             }
         }
@@ -296,11 +282,10 @@ function drawPropellerNet(n, isValid, errType) {
     ctx.resetTransform();
 }
 
-// --- 4. 다각형 넓이 복습용 도형 ---
+// --- 4. 다각형 넓이 복습 ---
 function drawAreaShape(type, p1, p2, p3) {
     ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.lineWidth = 3; ctx.strokeStyle = '#1e3a8a'; ctx.fillStyle = '#dbeafe';
-
     const cx = canvas.width / 2, cy = canvas.height / 2;
     let scale, bw, hh, tw, offset, w, h;
 
@@ -331,23 +316,20 @@ function drawAreaShape(type, p1, p2, p3) {
     }
 
     function drawText(text, x, y, color) {
-        ctx.font = 'bold 28px "Noto Sans KR"'; 
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.lineWidth = 5; ctx.strokeStyle = '#ffffff'; 
-        ctx.strokeText(text, x, y); 
+        ctx.font = 'bold 28px "Noto Sans KR"'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.lineWidth = 5; ctx.strokeStyle = '#ffffff'; ctx.strokeText(text, x, y); 
         ctx.fillStyle = color; ctx.fillText(text, x, y);
     }
 }
 
 function drawCanvasIcon(icon, title) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0, canvas.width, canvas.height);
     ctx.font = '60px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(icon, canvas.width/2, canvas.height/2 - 10);
-    ctx.fillStyle = '#4f46e5'; ctx.font = 'bold 20px "Noto Sans KR"';
-    ctx.fillText(title, canvas.width/2, canvas.height/2 + 50);
+    ctx.fillStyle = '#4f46e5'; ctx.font = 'bold 20px "Noto Sans KR"'; ctx.fillText(title, canvas.width/2, canvas.height/2 + 50);
 }
 
+// 메인 출제 로직
 function generateProblem() {
     if (state.problemCount > state.maxProblems) { finishGame(); return; }
     state.attempts = 0; els.count.innerText = state.problemCount; els.progress.style.width = `${((state.problemCount - 1) / state.maxProblems) * 100}%`;
@@ -420,12 +402,13 @@ function generateReverse() {
     els.hintText.innerText = hint; state.currentProblem = { ans: n, type: 'input', mode: 'normal' };
 }
 
-// ⭐ [하드모드 버그 해결] Scope(범위) 오류 수정 및 다양한 함정 출제 완료
+// ⭐ [완벽 오류 해결] 전개도 탐구 출제 
 function generateNet(isHard) {
     setUiMode('ox'); 
     
-    const n = getRandomInt(3, 8); 
-    const shapeNames = ["", "", "", "삼", "사", "오", "육", "칠", "팔"];
+    // 복잡한 하드모드의 시각적 식별을 위해 n각형 수를 3~6으로 제한하여 가독성 확보
+    const n = getRandomInt(3, 6); 
+    const shapeNames = ["", "", "", "삼", "사", "오", "육"];
     const shapeName = `${shapeNames[n]}각기둥`;
 
     const isValid = Math.random() < 0.5; 
@@ -434,18 +417,20 @@ function generateNet(isHard) {
     let topIndices = [getRandomInt(0, n-1)];
     let bottomIndices = [getRandomInt(0, n-1)];
     let hint = "";
-    let errType = -1; // Scope 오류를 해결하기 위해 밖에서 미리 선언!
+    
+    let errType = -1; // 버그 원인 해결: 스코프 에러 방지를 위해 변수 초기화
 
     if (isValid) {
-        hint = `밑면의 위치와 모양, 옆면의 개수가 정확해 완벽한 ${shapeName}이 됩니다.`;
+        hint = `모양과 개수가 정확하여 완벽하게 접히는 ${shapeName}이 됩니다.`;
     } else {
-        errType = isHard ? getRandomInt(0, 4) : getRandomInt(0, 3);
+        errType = isHard ? getRandomInt(0, 5) : getRandomInt(0, 3);
         
         if (errType === 0) { 
-            sideCount = n - 1; // 옆면 개수 부족
+            sideCount = Math.random() < 0.5 ? n - 1 : n + 1;
+            if(sideCount < 3) sideCount = 4;
             topIndices = [getRandomInt(0, sideCount - 1)];
             bottomIndices = [getRandomInt(0, sideCount - 1)];
-            hint = `밑면은 ${n}각형인데 연결된 옆면이 ${sideCount}개라 개수가 안 맞아요.`;
+            hint = `밑면은 ${n}각형인데, 직사각형(옆면)이 ${sideCount}개라 짝이 안 맞아요.`;
         } 
         else if (errType === 1) { 
             bottomIndices = [];
@@ -453,26 +438,30 @@ function generateNet(isHard) {
             let t2 = getRandomInt(0, sideCount - 1);
             while(t1 === t2 && sideCount > 1) t2 = getRandomInt(0, sideCount - 1); 
             topIndices = [t1, t2];
-            hint = `두 밑면이 같은 쪽에 붙어있어 접으면 겹치고 반대쪽은 뚫려요.`;
+            hint = `두 밑면이 같은 쪽(위)에 달려 있어서 접으면 겹치고 반대쪽은 뚫려요.`;
         } 
         else if (errType === 2) { 
             bottomIndices = [];
-            hint = `밑면이 1개뿐이라 뚜껑이 안 닫혀요.`;
+            hint = `밑면이 1개뿐이라 각기둥 뚜껑이 안 닫혀요.`;
         }
         else if (errType === 3) {
             nBottom = n === 3 ? 4 : (Math.random() < 0.5 ? n - 1 : n + 1);
-            hint = `윗면은 ${nTop}각형, 아랫면은 ${nBottom}각형이라 모양이 달라요.`;
+            hint = `윗면은 ${nTop}각형, 아랫면은 ${nBottom}각형이라 짝이 맞지 않아요.`;
         }
         else if (errType === 4 && isHard) {
             hint = `밑면이 직사각형의 긴 쪽 가장자리에 잘못 붙어있어요.`;
+        }
+        else if (errType === 5 && isHard) {
+            hint = `전개도를 접었을 때 두 밑면이 같은 위치에서 겹치게 됩니다.`;
         }
     }
 
     let usePropeller = false;
     if (isHard) {
         if (!isValid && errType === 4) usePropeller = true;
-        else if (!isValid && errType === 1) usePropeller = false; // 같은 쪽에 밑면이 붙는 오류는 프로펠러형으로 표현하기 어려움
-        else usePropeller = Math.random() < 0.5;
+        else if (!isValid && errType === 5) usePropeller = true;
+        else if (!isValid && errType === 1) usePropeller = false; // 같은 쪽 붙기 오류는 직선형이 더 직관적임
+        else usePropeller = Math.random() < 0.6;
     }
 
     if (usePropeller) {
@@ -488,39 +477,7 @@ function generateNet(isHard) {
     state.currentProblem = { ans: isValid ? "O" : "X", type: 'OX', mode: isHard ? 'hard_net' : 'normal' };
 }
 
-function generateArea() {
-    setUiMode('input');
-    const types = ['triangle', 'rectangle', 'parallelogram', 'trapezoid', 'rhombus'], type = types[getRandomInt(0, 4)];
-    let p1, p2, p3, ans, name, hint;
-
-    if (type === 'triangle') {
-        p1 = getRandomInt(4, 12); p2 = getRandomInt(4, 10); if ((p1 * p2) % 2 !== 0) p1 += 1;
-        ans = (p1 * p2) / 2; name = "삼각형"; hint = "밑변 × 높이 ÷ 2";
-    } else if (type === 'rectangle') {
-        p1 = getRandomInt(3, 12); p2 = getRandomInt(3, 12);
-        ans = p1 * p2; name = "직사각형"; hint = "가로 × 세로";
-    } else if (type === 'parallelogram') {
-        p1 = getRandomInt(4, 12); p2 = getRandomInt(4, 10);
-        ans = p1 * p2; name = "평행사변형"; hint = "밑변 × 높이";
-    } else if (type === 'trapezoid') {
-        p1 = getRandomInt(3, 8); p2 = getRandomInt(5, 12); p3 = getRandomInt(4, 10); if ((p1 + p2) * p3 % 2 !== 0) p3 += 1;
-        ans = ((p1 + p2) * p3) / 2; name = "사다리꼴"; hint = "(윗변 + 아랫변) × 높이 ÷ 2";
-    } else if (type === 'rhombus') {
-        p1 = getRandomInt(4, 12); p2 = getRandomInt(4, 12); if ((p1 * p2) % 2 !== 0) p1 += 1;
-        ans = (p1 * p2) / 2; name = "마름모"; hint = "한 대각선 × 다른 대각선 ÷ 2";
-    }
-
-    drawAreaShape(type, p1, p2, p3);
-    els.questionText.innerHTML = `그림에 주어진 <span class="text-indigo-600 font-bold">${name}</span>의 <span class="text-red-600 border-b-2 border-red-400">넓이</span>를 구하세요. (단위 생략)`;
-    els.hintText.innerText = hint; state.currentProblem = { ans: ans, type: 'input', mode: 'normal' };
-}
-
-function setUiMode(mode) {
-    if(mode === 'ox') { els.inputArea.classList.add('hidden'); els.inputArea.classList.remove('flex'); els.oxArea.classList.remove('hidden'); els.oxArea.classList.add('flex'); } 
-    else { els.inputArea.classList.remove('hidden'); els.inputArea.classList.add('flex'); els.oxArea.classList.add('hidden'); els.oxArea.classList.remove('flex'); els.ansInput.focus(); }
-}
-
-// ⭐ [채점 로직] O/X 기회 1번 & 하드모드 +20/-20점 완벽 적용
+// ⭐ [채점 로직] 단판 승부 및 하드모드 +20/-20점
 function checkAnswer(choice) {
     if(!els.nextBtn.classList.contains('hidden')) return;
     let correct = false, uAns = choice;
@@ -542,7 +499,7 @@ function checkAnswer(choice) {
         } else {
             state.score -= pointValue; els.score.innerText = state.score; 
             els.feedback.innerHTML = `<span class='text-red-600 font-bold'>아쉽네요. 정답은 '${state.currentProblem.ans}'입니다. (-${pointValue}점 감점)</span>`; 
-            els.hintBox.classList.remove('hidden'); endProblem(); // 기회 박탈
+            els.hintBox.classList.remove('hidden'); endProblem(); 
         }
         return; 
     }
