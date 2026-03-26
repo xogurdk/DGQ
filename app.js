@@ -94,14 +94,23 @@ function getRandomInt(min, max) { return Math.floor(Math.random() * (max - min +
 
 // --- 1. 3D 겨냥도 은선 처리 ---
 function draw3DShape(n, isPrism) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const cx = canvas.width / 2, cy = canvas.height / 2 + (isPrism ? 0 : 20), r = 40 + (n * 2.5), h = 100;
-    const hue = Math.floor(Math.random() * 360), colorSolid = `hsl(${hue}, 70%, 40%)`, colorFill = `hsla(${hue}, 70%, 60%, 0.15)`, colorDash = `hsla(${hue}, 70%, 40%, 0.6)`;
-    const bottomPts = [], topPts = [], angles = []; const offset = Math.PI / 2 + 0.3; 
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // 모바일 웹뷰 버그 해결을 위한 안전한 초기화
+    ctx.clearRect(0, 0, canvas.width, canvas.height); 
+    ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    const cx = canvas.width / 2, cy = canvas.height / 2 + (isPrism ? 0 : 20);
+    const r = 40 + (n * 2.5), h = 100;
+    const hue = Math.floor(Math.random() * 360);
+    const colorSolid = `hsl(${hue}, 70%, 40%)`, colorFill = `hsla(${hue}, 70%, 60%, 0.15)`, colorDash = `hsla(${hue}, 70%, 40%, 0.6)`;
+
+    const bottomPts = [], topPts = [], angles = []; 
+    const offset = Math.PI / 2 + 0.3; 
 
     for(let i=0; i<n; i++) {
         let angle = offset + (i * 2 * Math.PI / n); angles.push(angle);
-        let x = cx + r * Math.cos(angle), yBottom = cy + r * 0.3 * Math.sin(angle) + h/2, yTop = cy + r * 0.3 * Math.sin(angle) - h/2;
+        let x = cx + r * Math.cos(angle);
+        let yBottom = cy + r * 0.3 * Math.sin(angle) + h/2;
+        let yTop = cy + r * 0.3 * Math.sin(angle) - h/2;
         bottomPts.push({x, y: yBottom}); topPts.push({x, y: yTop});
     }
     const apex = {x: cx, y: cy - h/2 - 20}; 
@@ -125,19 +134,20 @@ function draw3DShape(n, isPrism) {
     if (isPrism) { ctx.moveTo(topPts[0].x, topPts[0].y); for(let i=1; i<n; i++) ctx.lineTo(topPts[i].x, topPts[i].y); ctx.closePath(); } ctx.stroke();
 }
 
-// --- 2. 일렬형 전개도 (스케일 자동 조절 방어) ---
+// --- 2. 일렬형 전개도 (스케일 자동 조절 방어 추가) ---
 function drawOffsetNet(nTop, nBottom, sideCount, topIndices, bottomIndices) {
-    ctx.resetTransform(); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.setTransform(1, 0, 0, 1, 0, 0); 
+    ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,canvas.width,canvas.height);
     
     let maxN = Math.max(nTop || 3, nBottom || 3, 3);
     let R_factor = 0.5 / Math.sin(Math.PI / maxN);
     let r_factor = 0.5 / Math.tan(Math.PI / maxN);
     
-    // 화면을 넘어가지 않도록 안전한 s(길이) 계산
-    let requiredW = Math.max(sideCount, 3);
-    let requiredH = 2.5 + 2 * (R_factor + r_factor); 
+    // 네모칸을 벗어나지 않도록 안전하게 가로/세로 비율 계산
+    let requiredW = sideCount + 4 * R_factor;
+    let requiredH = 2.5 + 4 * R_factor; 
     
-    let s = Math.min((canvas.width * 0.85) / requiredW, (canvas.height * 0.85) / requiredH, 35);
+    let s = Math.min((canvas.width * 0.8) / requiredW, (canvas.height * 0.8) / requiredH, 30);
     let h = s * 2.5;
 
     let startX = canvas.width/2 - (sideCount*s)/2;
@@ -168,7 +178,6 @@ function drawOffsetNet(nTop, nBottom, sideCount, topIndices, bottomIndices) {
         } ctx.closePath();
         ctx.fillStyle = '#bfdbfe'; ctx.fill(); ctx.stroke();
         
-        // 겹치는 모서리 지우고 점선 덮어쓰기
         ctx.beginPath(); ctx.strokeStyle = '#bfdbfe'; ctx.lineWidth = 4;
         ctx.moveTo(idx*s, isTop ? 0 : h); ctx.lineTo(idx*s+s, isTop ? 0 : h); ctx.stroke();
         ctx.beginPath(); ctx.strokeStyle = '#333'; ctx.lineWidth = 2; ctx.setLineDash([5,5]);
@@ -177,25 +186,26 @@ function drawOffsetNet(nTop, nBottom, sideCount, topIndices, bottomIndices) {
 
     topIndices.forEach(idx => drawPoly(idx, true, nTop));
     bottomIndices.forEach(idx => drawPoly(idx, false, nBottom));
-    ctx.resetTransform();
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // 안전한 복구
 }
 
-// --- 3. [하드모드 전용] 프로펠러형 전개도 (스케일 자동 조절 방어) ---
+// --- 3. [하드모드 전용] 프로펠러형 복잡 전개도 (자동 축소 기능 완벽 적용) ---
 function drawPropellerNet(n, isValid, errType) {
-    ctx.resetTransform(); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.setTransform(1, 0, 0, 1, 0, 0); 
+    ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,canvas.width,canvas.height);
     
-    // 화면 이탈 방지 스케일
+    // 복잡한 모양도 네모칸 밖으로 나가지 않도록 지름 자동 계산
     let R_factor = 0.5 / Math.sin(Math.PI/n);
     let r_factor = 0.5 / Math.tan(Math.PI/n);
     let spanFactor = 2.5 + 4 * (R_factor + r_factor); 
-    let s = Math.min((canvas.height * 0.85) / spanFactor, 25); 
+    let s = Math.min((canvas.width * 0.9) / spanFactor, (canvas.height * 0.9) / spanFactor, 25); 
     let h = s * 2.5;
     let R = s * R_factor;
     let apothem = s * r_factor;
     
     ctx.translate(canvas.width/2, canvas.height/2);
     
-    // 1. 중앙 첫 번째 밑면 
+    // 중앙 밑면 
     ctx.beginPath();
     for(let i=0; i<n; i++) {
         let angle = i * 2*Math.PI/n;
@@ -204,7 +214,6 @@ function drawPropellerNet(n, isValid, errType) {
     } ctx.closePath();
     ctx.fillStyle = '#bfdbfe'; ctx.fill(); ctx.strokeStyle = '#333'; ctx.lineWidth = 2; ctx.stroke();
 
-    // 에러 타입 제어 변수
     let skipIdx = (!isValid && errType === 0) ? getRandomInt(0, n-1) : -1; 
     let base2Idx = getRandomInt(0, n-1); 
     while(base2Idx === skipIdx) { base2Idx = getRandomInt(0, n-1); }
@@ -221,7 +230,7 @@ function drawPropellerNet(n, isValid, errType) {
         ctx.beginPath(); ctx.rect(-s/2, 0, s, h); ctx.fillStyle = '#e0e7ff'; ctx.fill(); ctx.stroke();
         ctx.beginPath(); ctx.setLineDash([5,5]); ctx.moveTo(-s/2, 0); ctx.lineTo(s/2, 0); ctx.stroke(); ctx.setLineDash([]);
 
-        // 두 번째 밑면 부착
+        // 두 번째 밑면
         if (i === base2Idx) {
             let n2 = n;
             if (!isValid && errType === 3) n2 = n===3 ? 4 : (Math.random() < 0.5 ? n - 1 : n + 1); 
@@ -241,7 +250,7 @@ function drawPropellerNet(n, isValid, errType) {
                         if(j===0) ctx.moveTo(R2 * Math.cos(a2), R2 * Math.sin(a2)); else ctx.lineTo(R2 * Math.cos(a2), R2 * Math.sin(a2));
                     } ctx.closePath(); ctx.fillStyle = '#bfdbfe'; ctx.fill(); ctx.stroke();
                 } else if (!isValid && errType === 5) {
-                    // 치명적 오류: 한쪽 날개에 두 개의 밑면이 다닥다닥 붙음
+                    // 치명적 오류: 한쪽 날개에 두 개의 밑면이 겹쳐서 다닥다닥 붙음
                     ctx.translate(0, h);
                     ctx.beginPath(); ctx.setLineDash([5,5]); ctx.moveTo(-s/2, 0); ctx.lineTo(s/2, 0); ctx.stroke(); ctx.setLineDash([]);
                     
@@ -253,7 +262,6 @@ function drawPropellerNet(n, isValid, errType) {
                         if(j===0) ctx.moveTo(R2 * Math.cos(a2), R2 * Math.sin(a2)); else ctx.lineTo(R2 * Math.cos(a2), R2 * Math.sin(a2));
                     } ctx.closePath(); ctx.fillStyle = '#bfdbfe'; ctx.fill(); ctx.stroke();
 
-                    // 한 번 더 붙이기
                     ctx.translate(0, apo2);
                     ctx.beginPath(); ctx.setLineDash([5,5]); ctx.moveTo(-s/2, 0); ctx.lineTo(s/2, 0); ctx.stroke(); ctx.setLineDash([]);
                     ctx.translate(0, apo2);
@@ -279,11 +287,12 @@ function drawPropellerNet(n, isValid, errType) {
         }
         ctx.restore();
     }
-    ctx.resetTransform();
+    ctx.setTransform(1, 0, 0, 1, 0, 0); 
 }
 
 // --- 4. 다각형 넓이 복습 ---
 function drawAreaShape(type, p1, p2, p3) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0); 
     ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.lineWidth = 3; ctx.strokeStyle = '#1e3a8a'; ctx.fillStyle = '#dbeafe';
     const cx = canvas.width / 2, cy = canvas.height / 2;
@@ -323,6 +332,7 @@ function drawAreaShape(type, p1, p2, p3) {
 }
 
 function drawCanvasIcon(icon, title) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0); 
     ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0, canvas.width, canvas.height);
     ctx.font = '60px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(icon, canvas.width/2, canvas.height/2 - 10);
@@ -395,18 +405,18 @@ function generateReverse() {
     if(shapeMode === 'prism') isPrism = true; if(shapeMode === 'pyramid') isPrism = false;
     const n = getRandomInt(4, 10), qType = getRandomInt(0, 2), properties = ["면", "모서리", "꼭짓점"], propName = properties[qType];
     let givenNum = 0, hint = "";
-    if (isPrism) { if(qType===0){givenNum=n+2; hint="(전체 면의 수 - 2) = 밑면의 변의 수";}else if(qType===1){givenNum=n*3; hint="(전체 모서리 수 ÷ 3) = 밑면의 변의 수";}else{givenNum=n*2; hint="(전체 꼭짓점 수 ÷ 2) = 밑면의 변의 수";} } 
+    if (isPrism) { if(qType===0){givenNum=n+2; hint="(전체 면의 수 - 2) = 밑면의 변의 수";}else if(qType===1){givenNum=n*3; hint="(전체 모서 수 ÷ 3) = 밑면의 변의 수";}else{givenNum=n*2; hint="(전체 꼭짓점 수 ÷ 2) = 밑면의 변의 수";} } 
     else { if(qType===0){givenNum=n+1; hint="(전체 면의 수 - 1) = 밑면의 변의 수";}else if(qType===1){givenNum=n*2; hint="(전체 모서리 수 ÷ 2) = 밑면의 변의 수";}else{givenNum=n+1; hint="(전체 꼭짓점 수 - 1) = 밑면의 변의 수";} }
     drawCanvasIcon('❓', '무엇일까요?');
     els.questionText.innerHTML = `<span class="text-red-600 border-b-2 border-red-400">${propName}의 수가 ${givenNum}개</span>인 <span class="text-indigo-600 font-bold">${isPrism ? '각기둥' : '각뿔'}</span>이 있습니다. <br>이 도형의 밑면은 몇 각형일까요?`;
     els.hintText.innerText = hint; state.currentProblem = { ans: n, type: 'input', mode: 'normal' };
 }
 
-// ⭐ [완벽 오류 해결] 전개도 탐구 출제 
+// ⭐ [전면 개편] 전개도 탐구 100% O/X 모드 및 다양한 함정 출제 (안전 로직 포함)
 function generateNet(isHard) {
     setUiMode('ox'); 
     
-    // 복잡한 하드모드의 시각적 식별을 위해 n각형 수를 3~6으로 제한하여 가독성 확보
+    // 시각적 구분이 되도록 3각형~6각형 위주로 생성
     const n = getRandomInt(3, 6); 
     const shapeNames = ["", "", "", "삼", "사", "오", "육"];
     const shapeName = `${shapeNames[n]}각기둥`;
@@ -418,10 +428,11 @@ function generateNet(isHard) {
     let bottomIndices = [getRandomInt(0, n-1)];
     let hint = "";
     
-    let errType = -1; // 버그 원인 해결: 스코프 에러 방지를 위해 변수 초기화
+    // 이전에 발생했던 스코프 버그 해결을 위해 미리 선언
+    let errType = -1; 
 
     if (isValid) {
-        hint = `모양과 개수가 정확하여 완벽하게 접히는 ${shapeName}이 됩니다.`;
+        hint = `밑면의 위치와 모양, 옆면의 개수가 정확해 완벽하게 접히는 ${shapeName}이 됩니다.`;
     } else {
         errType = isHard ? getRandomInt(0, 5) : getRandomInt(0, 3);
         
@@ -430,7 +441,7 @@ function generateNet(isHard) {
             if(sideCount < 3) sideCount = 4;
             topIndices = [getRandomInt(0, sideCount - 1)];
             bottomIndices = [getRandomInt(0, sideCount - 1)];
-            hint = `밑면은 ${n}각형인데, 직사각형(옆면)이 ${sideCount}개라 짝이 안 맞아요.`;
+            hint = `밑면은 ${n}각형인데 연결된 직사각형(옆면)이 ${sideCount}개라 짝이 안 맞아요.`;
         } 
         else if (errType === 1) { 
             bottomIndices = [];
@@ -438,7 +449,7 @@ function generateNet(isHard) {
             let t2 = getRandomInt(0, sideCount - 1);
             while(t1 === t2 && sideCount > 1) t2 = getRandomInt(0, sideCount - 1); 
             topIndices = [t1, t2];
-            hint = `두 밑면이 같은 쪽(위)에 달려 있어서 접으면 겹치고 반대쪽은 뚫려요.`;
+            hint = `두 밑면이 같은 쪽에 붙어있어 접으면 겹치고 반대쪽은 뚫려요.`;
         } 
         else if (errType === 2) { 
             bottomIndices = [];
@@ -446,13 +457,13 @@ function generateNet(isHard) {
         }
         else if (errType === 3) {
             nBottom = n === 3 ? 4 : (Math.random() < 0.5 ? n - 1 : n + 1);
-            hint = `윗면은 ${nTop}각형, 아랫면은 ${nBottom}각형이라 짝이 맞지 않아요.`;
+            hint = `윗면은 ${nTop}각형, 아랫면은 ${nBottom}각형이라 모양이 서로 달라요.`;
         }
         else if (errType === 4 && isHard) {
-            hint = `밑면이 직사각형의 긴 쪽 가장자리에 잘못 붙어있어요.`;
+            hint = `밑면이 직사각형의 짧은 변이 아닌 '긴 쪽 가장자리'에 잘못 붙어있어요.`;
         }
         else if (errType === 5 && isHard) {
-            hint = `전개도를 접었을 때 두 밑면이 같은 위치에서 겹치게 됩니다.`;
+            hint = `전개도를 접었을 때 두 밑면이 같은 공간에서 겹치게 됩니다.`;
         }
     }
 
@@ -460,7 +471,7 @@ function generateNet(isHard) {
     if (isHard) {
         if (!isValid && errType === 4) usePropeller = true;
         else if (!isValid && errType === 5) usePropeller = true;
-        else if (!isValid && errType === 1) usePropeller = false; // 같은 쪽 붙기 오류는 직선형이 더 직관적임
+        else if (!isValid && errType === 1) usePropeller = false; 
         else usePropeller = Math.random() < 0.6;
     }
 
@@ -475,6 +486,11 @@ function generateNet(isHard) {
 
     els.hintText.innerText = hint; 
     state.currentProblem = { ans: isValid ? "O" : "X", type: 'OX', mode: isHard ? 'hard_net' : 'normal' };
+}
+
+function setUiMode(mode) {
+    if(mode === 'ox') { els.inputArea.classList.add('hidden'); els.inputArea.classList.remove('flex'); els.oxArea.classList.remove('hidden'); els.oxArea.classList.add('flex'); } 
+    else { els.inputArea.classList.remove('hidden'); els.inputArea.classList.add('flex'); els.oxArea.classList.add('hidden'); els.oxArea.classList.remove('flex'); els.ansInput.focus(); }
 }
 
 // ⭐ [채점 로직] 단판 승부 및 하드모드 +20/-20점
